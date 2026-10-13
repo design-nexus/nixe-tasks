@@ -7,6 +7,7 @@ use crate::sections::{self, Section};
 use crate::widgets;
 use crate::{fmt, live, prefs, settings_dialog, theme};
 use gtk::prelude::*;
+use nixe_ui::chrome;
 use gtk::{gdk, glib};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -23,8 +24,6 @@ struct Ui {
     toast: gtk::Label,
     toast_timer: Option<glib::SourceId>,
     overlay: gtk::Overlay,
-    /// The current page's name, in the top bar.
-    crumb: gtk::Label,
     /// Holds the current page's "open the config file" button.
     edit: gtk::Box,
 }
@@ -148,6 +147,12 @@ fn build(app: &gtk::Application) {
         .vexpand(true)
         .child(&list)
         .build();
+    let head = chrome::sidebar_head("Tasks", Some("Filter processes, or go to anything (Ctrl+F)"));
+    head.toggle.connect_clicked(|_| toggle_sidebar());
+    if let Some(find_button) = &head.search {
+        find_button.connect_clicked(|_| find());
+    }
+    nav.append(&head.root);
     nav.append(&nav_scroll);
 
     // ----- Content -----
@@ -162,12 +167,12 @@ fn build(app: &gtk::Application) {
     body.append(&nav);
     body.append(&stack);
 
-    let (top, crumb, edit) = top_bar(&window);
+    // The page's config files, beside the settings gear.
+    let edit = widgets::hbox(0);
     let frame = gtk::Box::new(gtk::Orientation::Vertical, 0);
     frame.add_css_class("window-frame");
-    frame.append(&top);
     frame.append(&body);
-    frame.append(&status_bar());
+    frame.append(&status_bar(&edit));
 
     let overlay = gtk::Overlay::new();
     overlay.set_child(Some(&frame));
@@ -299,7 +304,6 @@ fn build(app: &gtk::Application) {
         toast,
         toast_timer: None,
         overlay,
-        crumb,
         edit,
     };
     UI.with(|u| *u.borrow_mut() = Some(Rc::new(RefCell::new(ui))));
@@ -317,38 +321,6 @@ thread_local! {
     static NARROW: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
-/// The bar across the top: the sidebar toggle and where you are on the left;
-/// the page's config file, search, settings and close on the right.
-fn top_bar(window: &gtk::ApplicationWindow) -> (gtk::Box, gtk::Label, gtk::Box) {
-    let bar = widgets::hbox(4);
-    bar.add_css_class("top-bar");
-    let toggle = widgets::bar_button("sidebar-show-symbolic", "Collapse or expand the sidebar (Ctrl+B)");
-    toggle.connect_clicked(|_| toggle_sidebar());
-    bar.append(&toggle);
-    let crumbs = widgets::hbox(10);
-    crumbs.add_css_class("crumbs");
-    crumbs.append(&widgets::label("Tasks", "crumb-root"));
-    crumbs.append(&widgets::label("/", "crumb-sep"));
-    let crumb = widgets::label("", "crumb");
-    crumb.set_ellipsize(gtk::pango::EllipsizeMode::End);
-    crumbs.append(&crumb);
-    crumbs.set_hexpand(true);
-    bar.append(&crumbs);
-    let edit = widgets::hbox(0);
-    bar.append(&edit);
-    let search = widgets::bar_button("system-search-symbolic", "Filter processes, or go to anything (Ctrl+F)");
-    search.connect_clicked(|_| find());
-    bar.append(&search);
-    let gear = widgets::bar_button("emblem-system-symbolic", "Settings");
-    gear.connect_clicked(|_| settings_dialog::open());
-    bar.append(&gear);
-    let close = widgets::bar_button("window-close-symbolic", "Close (Ctrl+W)");
-    let w = window.clone();
-    close.connect_clicked(move |_| w.close());
-    bar.append(&close);
-    (bar, crumb, edit)
-}
-
 /// Ctrl+F: filter the process list on Processes; anywhere else, Go to.
 fn find() {
     if current() == "processes" {
@@ -360,7 +332,7 @@ fn find() {
 
 /// The bar along the bottom: the shortcuts on the left; processes, CPU and
 /// memory, and the live/paused switch on the right.
-fn status_bar() -> gtk::Box {
+fn status_bar(edit: &gtk::Box) -> gtk::Box {
     let bar = widgets::hbox(16);
     bar.add_css_class("status-bar");
     let help = gtk::Button::new();
@@ -391,6 +363,8 @@ fn status_bar() -> gtk::Box {
         }
         r.set_text(&parts.join(" · "));
     });
+    bar.append(edit);
+    bar.append(&chrome::gear(settings_dialog::open));
     bar
 }
 
@@ -463,6 +437,9 @@ fn apply_compact(compact: bool) {
         }
         for w in &s.hide {
             w.set_visible(!compact);
+        }
+        if let Some(head) = s.nav.first_child().and_downcast::<gtk::Box>() {
+            chrome::set_head_compact(&head, compact);
         }
         centre_icons(s.nav.upcast_ref(), compact);
     });
@@ -603,7 +580,7 @@ pub fn navigate(id: &str) {
     u.stack.set_visible_child_name(id);
     u.current = id;
     if let Some(s) = u.sections.iter().find(|s| s.id == id) {
-        u.crumb.set_text(s.title);
+        chrome::set_title(&u.window, "Tasks", s.title);
         while let Some(c) = u.edit.first_child() {
             u.edit.remove(&c);
         }
