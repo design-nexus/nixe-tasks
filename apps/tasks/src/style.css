@@ -1,0 +1,1273 @@
+/* Tasks — Nexus app style. One flat surface split by hairlines, monospace
+ * throughout. Every colour comes from the @theme_* tokens defined by the active
+ * palette (see theme.rs), or from the mixes of them below. */
+
+@define-color hairline mix(@theme_bg, @theme_border, 0.82);
+@define-color divider alpha(@theme_text, 0.08);
+@define-color nav_active mix(@theme_bg, @theme_accent, 0.18);
+@define-color row_hover mix(@theme_bg, @theme_accent, 0.07);
+@define-color lift mix(@theme_bg, @theme_muted, 0.09);
+@define-color lift_active mix(@lift, @theme_accent, 0.1);
+@define-color veil alpha(mix(@theme_bg, @theme_shadow, 0.45), 0.82);
+
+window.tasks-window {
+  background: @theme_bg;
+  color: @theme_text;
+  font-family: "JetBrains Mono", "JetBrainsMono Nerd Font", monospace;
+  font-weight: 500;
+}
+
+window.tasks-window,
+window.tasks-window popover,
+window.tasks-window dialog {
+  font-size: 1.0em;
+}
+
+.mono,
+.value-readout {
+  font-family: "JetBrains Mono", "JetBrainsMono Nerd Font", monospace;
+  font-feature-settings: "tnum";
+}
+
+
+/* ---------- Sidebar ---------- */
+
+.settings-navigation {
+  background: @theme_bg;
+  min-width: 250px;
+  padding: 10px 6px;
+  border-right: 1px solid @hairline;
+}
+
+.settings-navigation.compact {
+  min-width: 0;
+  padding: 10px 6px;
+}
+
+.settings-navigation.compact button.nav-item {
+  min-width: 40px;
+  padding: 0;
+}
+
+.settings-navigation .nav-group {
+  margin: 10px -6px 4px;
+  padding: 16px 18px 4px;
+  border-top: 1px solid @hairline;
+  font-size: 0.76em;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: @theme_dim_text;
+}
+
+.settings-navigation button.nav-item {
+  min-height: 42px;
+  padding: 0 12px;
+  margin: 1px 0;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: @theme_text;
+  font-weight: 500;
+  transition: background 150ms ease-out, color 150ms ease-out;
+}
+
+.settings-navigation button.nav-item image {
+  color: @theme_dim_text;
+}
+
+.settings-navigation button.nav-item:hover {
+  background: @row_hover;
+}
+
+.settings-navigation button.nav-item.active {
+  background: @nav_active;
+  box-shadow: none;
+}
+
+.settings-navigation button.nav-item.active image {
+  color: @theme_accent;
+}
+
+.settings-navigation button.nav-item .nav-label {
+  font-weight: 500;
+}
+
+
+/* ---------- Search ---------- */
+
+entry.settings-search,
+searchbar entry,
+entry.settings-search > text {
+  min-height: 36px;
+}
+
+entry.settings-search {
+  margin: 0 0 14px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid @hairline;
+  box-shadow: none;
+  color: @theme_text;
+  outline: none;
+}
+
+entry.settings-search:focus-within {
+  border-color: @theme_accent;
+  box-shadow: none;
+}
+
+entry.settings-search image {
+  color: @theme_dim_text;
+}
+
+
+/* ---------- Content ---------- */
+
+.settings-content {
+  background: @theme_bg;
+}
+
+.settings-page {
+  padding: 12px 24px 36px;
+}
+
+/* A page's first heading (marked by the window) sits right under the top
+ * padding, so the space above it matches the space below it. */
+.group-title.page-first,
+.group-head.page-first {
+  margin-top: 0;
+}
+
+.settings-page.narrow {
+  padding: 12px 16px 32px;
+}
+
+.section-title {
+  font-size: 1.3em;
+  font-weight: 700;
+  color: @theme_text;
+}
+
+.group-title {
+  margin: 26px 2px 12px;
+  font-size: 0.9em;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: @theme_dim_text;
+}
+
+.group-head {
+  margin: 26px 2px 12px;
+}
+
+/* A button in a heading row doesn't make the row taller than the heading. */
+.group-head > button,
+.group-head > menubutton {
+  margin-top: -8px;
+  margin-bottom: -8px;
+}
+
+.group-head .group-title {
+  margin: 0;
+}
+
+window.tasks-window button.group-action {
+  min-height: 26px;
+  min-width: 26px;
+  padding: 0 4px;
+}
+
+.tile-editor {
+  min-width: 220px;
+}
+
+.priority-custom {
+  margin-top: 6px;
+  padding: 6px 4px 2px;
+  border-top: 1px solid @hairline;
+}
+
+.loading {
+  padding: 24px 0;
+}
+
+.group-note {
+  margin: -6px 2px 12px;
+  font-size: 0.88em;
+  color: @theme_dim_text;
+}
+
+.settings-group {
+  /* the rows provide the chrome */
+}
+
+.settings-option {
+  border: 1px solid @hairline;
+  border-radius: 10px;
+  min-height: 52px;
+  padding: 10px 20px;
+}
+
+.settings-option.tall {
+  padding: 14px 20px;
+}
+
+.settings-option-title {
+  color: @theme_text;
+  font-weight: 700;
+}
+
+.settings-option-description {
+  color: @theme_dim_text;
+  font-size: 0.88em;
+}
+
+.settings-option-description link {
+  color: @theme_accent;
+}
+
+.settings-option .managed-dot {
+  min-width: 6px;
+  min-height: 6px;
+  border-radius: 999px;
+  background: @theme_accent;
+  margin-right: 2px;
+}
+
+.value-readout {
+  color: @theme_text;
+  min-width: 64px;
+}
+
+.dim {
+  color: @theme_dim_text;
+}
+
+label.warning-text,
+.stat-value.warning-text {
+  color: @theme_danger;
+}
+
+.danger-text {
+  color: @theme_danger;
+}
+
+.accent-text {
+  color: @theme_accent;
+}
+
+
+/* ---------- Buttons ---------- */
+
+window.tasks-window button {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid @hairline;
+  box-shadow: none;
+  color: @theme_text;
+  transition: background 150ms ease-out, border-color 150ms ease-out;
+}
+
+window.tasks-window button:hover {
+  background: @row_hover;
+}
+
+window.tasks-window button:active {
+  background: alpha(@theme_accent, 0.22);
+}
+
+window.tasks-window button:disabled {
+  opacity: 0.45;
+}
+
+window.tasks-window button.suggested-action {
+  background: @nav_active;
+  border-color: transparent;
+  color: @theme_text;
+  font-weight: 600;
+}
+
+window.tasks-window button.suggested-action:hover {
+  background: mix(@theme_bg, @theme_accent, 0.26);
+}
+
+window.tasks-window button.destructive-action {
+  background: alpha(@theme_danger, 0.12);
+  border-color: alpha(@theme_danger, 0.55);
+  color: @theme_danger;
+}
+
+window.tasks-window button.flat {
+  background: transparent;
+  border-color: transparent;
+}
+
+window.tasks-window button.flat:hover {
+  background: @row_hover;
+}
+
+window.tasks-window button.reset-button {
+  min-height: 26px;
+  min-width: 26px;
+  padding: 0;
+  border-radius: 999px;
+  color: @theme_dim_text;
+}
+
+window.tasks-window button.chip {
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 0.9em;
+}
+
+window.tasks-window button.chip.small {
+  min-height: 22px;
+  padding: 0 9px;
+  font-size: 0.82em;
+}
+
+window.tasks-window button.chip.selected {
+  background: @nav_active;
+  border-color: transparent;
+  color: @theme_text;
+}
+
+
+/* ---------- Inputs ---------- */
+
+window.tasks-window entry,
+window.tasks-window spinbutton {
+  min-height: 32px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid @hairline;
+  box-shadow: none;
+  color: @theme_text;
+}
+
+window.tasks-window entry:focus-within,
+window.tasks-window spinbutton:focus-within {
+  border-color: @theme_accent;
+  box-shadow: none;
+}
+
+window.tasks-window dropdown > button {
+  min-width: 160px;
+}
+
+window.tasks-window popover > contents {
+  background: @theme_surface;
+  border: 1px solid alpha(@theme_border, 0.7);
+  border-radius: 9px;
+  box-shadow: 0 4px 16px alpha(@theme_shadow, 0.5);
+  color: @theme_text;
+  padding: 4px;
+}
+
+window.tasks-window popover listview > row,
+window.tasks-window popover list > row {
+  border-radius: 5px;
+  padding: 6px 10px;
+  color: @theme_text;
+}
+
+window.tasks-window popover listview > row:hover,
+window.tasks-window popover list > row:hover,
+window.tasks-window popover listview > row:selected {
+  background: alpha(@theme_accent, 0.18);
+}
+
+window.tasks-window switch {
+  min-width: 44px;
+  min-height: 26px;
+  border-radius: 999px;
+  background: alpha(@theme_muted, 0.3);
+  border: 1px solid @hairline;
+  box-shadow: none;
+}
+
+window.tasks-window switch:checked {
+  background: mix(@theme_bg, @theme_accent, 0.25);
+}
+
+window.tasks-window switch > slider {
+  min-width: 18px;
+  min-height: 18px;
+  margin: 3px;
+  border-radius: 999px;
+  background: @theme_dim_text;
+  border: none;
+  box-shadow: none;
+}
+
+window.tasks-window switch:checked > slider {
+  background: @theme_accent;
+}
+
+window.tasks-window scale {
+  padding: 8px 4px;
+}
+
+window.tasks-window scale > trough {
+  min-height: 4px;
+  min-width: 4px;
+  border-radius: 999px;
+  background: alpha(@theme_muted, 0.8);
+  border: none;
+}
+
+window.tasks-window scale > trough > highlight {
+  border-radius: 999px;
+  background: @theme_accent;
+}
+
+window.tasks-window scale > trough > slider,
+window.tasks-window scale.marks-before > trough > slider,
+window.tasks-window scale.marks-after > trough > slider {
+  -gtk-icon-source: none;
+  background-image: none;
+  min-width: 16px;
+  min-height: 16px;
+  margin: -7px;
+  border-radius: 999px;
+  background: @theme_text;
+  border: 2px solid @theme_accent;
+  box-shadow: 0 0 10px alpha(@theme_glow, 0.35);
+}
+
+window.tasks-window scale:disabled {
+  opacity: 0.5;
+}
+
+window.tasks-window scale marks {
+  color: alpha(@theme_dim_text, 0.7);
+}
+
+window.tasks-window scrollbar {
+  background: transparent;
+}
+
+window.tasks-window scrollbar slider {
+  min-width: 6px;
+  border-radius: 999px;
+  background: alpha(@theme_muted, 0.9);
+}
+
+
+/* ---------- Cards (themes, gestures) ---------- */
+
+/* ---------- Theme swatches ---------- */
+
+.theme-card {
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid alpha(@theme_border, 0.6);
+  background: mix(@theme_bg, @theme_muted, 0.2);
+}
+
+.theme-card:hover {
+  border-color: alpha(@theme_accent, 0.6);
+}
+
+.theme-card.selected {
+  border-color: @theme_accent;
+  box-shadow: 0 0 0 1px alpha(@theme_accent, 0.72), 0 0 14px alpha(@theme_glow, 0.24);
+}
+
+.theme-card picture {
+  border-radius: 7px 7px 0 0;
+}
+
+.theme-card .theme-card-name {
+  padding: 8px 10px;
+  font-weight: 600;
+}
+
+.swatch {
+  min-width: 16px;
+  min-height: 16px;
+  border-radius: 4px;
+  border: 1px solid alpha(@theme_shadow, 0.4);
+}
+
+
+/* ---------- Banners and dialogs ---------- */
+
+.banner {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: alpha(@theme_accent, 0.12);
+  border: 1px solid alpha(@theme_accent, 0.45);
+  margin-bottom: 14px;
+}
+
+.banner.warning {
+  background: alpha(@theme_danger, 0.1);
+  border-color: alpha(@theme_danger, 0.45);
+}
+
+/* Buttons on a banner are its action: a solid accent, so they stand out on the tint. */
+window.tasks-window .banner button {
+  background: @theme_accent;
+  border-color: @theme_accent;
+  color: @theme_on_accent;
+  font-weight: 600;
+}
+
+window.tasks-window .banner button:hover {
+  background: mix(@theme_accent, @theme_text, 0.12);
+}
+
+window.tasks-window .banner.warning button {
+  background: @theme_danger;
+  border-color: @theme_danger;
+}
+
+window.tasks-window .banner.warning button:hover {
+  background: mix(@theme_danger, @theme_text, 0.12);
+}
+
+.toast {
+  /* Above the player bar and the status bar. */
+  margin: 18px 18px 104px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: @theme_surface;
+  border: 1px solid alpha(@theme_border, 0.8);
+  box-shadow: 0 4px 16px alpha(@theme_shadow, 0.5), 0 0 14px alpha(@theme_glow, 0.14);
+}
+
+.dialog-card {
+  background: @theme_bg;
+  border: 1px solid alpha(@theme_border, 0.65);
+  border-radius: 14px;
+  box-shadow: 0 0 28px alpha(@theme_glow, 0.08);
+  padding: 24px;
+}
+
+.code-block {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.86em;
+  background: alpha(@theme_shadow, 0.35);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: @theme_text;
+}
+
+textview.code-block > text {
+  background: transparent;
+  color: @theme_text;
+}
+
+.key-cap {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.85em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: alpha(@theme_muted, 0.55);
+  border: 1px solid alpha(@theme_border, 0.9);
+}
+
+
+/* ---------- Sidebar readouts and footer ---------- */
+
+.settings-navigation .nav-readout {
+  font-size: 0.78em;
+  color: @theme_dim_text;
+}
+
+.settings-navigation button.nav-item.active .nav-readout {
+  color: @theme_text;
+}
+
+window.tasks-window button.live-pill {
+  min-height: 22px;
+  padding: 0 8px;
+  border-color: transparent;
+  font-size: 1em;
+  font-weight: 500;
+  color: @theme_dim_text;
+}
+
+window.tasks-window button.live-pill.paused {
+  background: alpha(@theme_danger, 0.12);
+  color: @theme_danger;
+}
+
+
+/* ---------- Stat tiles ---------- */
+
+window.tasks-window button.stat-tile {
+  padding: 12px 14px 10px;
+  border-radius: 8px;
+  background: mix(@theme_bg, @theme_muted, 0.25);
+  border: 1px solid @hairline;
+  min-width: 150px;
+}
+
+window.tasks-window button.stat-tile:hover {
+  background: mix(@theme_bg, @theme_muted, 0.32);
+  border-color: alpha(@theme_accent, 0.55);
+}
+
+.stat-title {
+  font-size: 0.76em;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  color: @theme_dim_text;
+}
+
+.stat-value {
+  font-size: 1.5em;
+  font-weight: 800;
+  color: @theme_text;
+}
+
+.stat-sub {
+  font-size: 0.82em;
+  color: @theme_dim_text;
+}
+
+
+/* ---------- Graphs ---------- */
+
+.graph-card {
+  background: mix(@theme_bg, @theme_muted, 0.25);
+  border: 1px solid @hairline;
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.graph-card-title {
+  font-weight: 700;
+  color: @theme_text;
+}
+
+.graph-legend {
+  font-size: 0.86em;
+}
+
+.legend-label {
+  color: @theme_dim_text;
+}
+
+.legend-value {
+  color: @theme_text;
+  font-weight: 700;
+}
+
+.legend-swatch {
+  min-width: 16px;
+  min-height: 3px;
+  border-radius: 2px;
+}
+
+.legend-swatch.tone-accent { background: @theme_accent; }
+
+.legend-swatch.tone-second { background: mix(@theme_accent, @theme_danger, 0.55); }
+
+.legend-swatch.dashed {
+  min-height: 0;
+  background: none;
+  border-top: 2px dashed mix(@theme_accent, @theme_danger, 0.55);
+}
+
+.graph-plot {
+  background: alpha(@theme_bg, 0.35);
+  border-radius: 4px;
+}
+
+.graph-axis {
+  font-size: 0.72em;
+  color: @theme_dim_text;
+}
+
+.graph-plot .graph-axis {
+  margin: 3px 6px;
+  color: alpha(@theme_dim_text, 0.9);
+}
+
+.graph-tip {
+  font-size: 0.8em;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: @theme_surface;
+  border: 1px solid alpha(@theme_border, 0.8);
+  box-shadow: 0 4px 16px alpha(@theme_shadow, 0.5);
+  color: @theme_text;
+}
+
+.core-cell {
+  background: mix(@theme_bg, @theme_surface, 0.5);
+  border: 1px solid alpha(@theme_border, 0.45);
+  border-radius: 6px;
+  padding: 6px 8px 4px;
+  min-width: 96px;
+}
+
+.core-cell .core-name {
+  font-size: 0.74em;
+  font-weight: 700;
+  color: @theme_dim_text;
+}
+
+.core-cell .core-value {
+  font-size: 0.8em;
+  color: @theme_text;
+}
+
+.core-tile {
+  background: mix(@theme_bg, @theme_surface, 0.5);
+  border: 1px solid alpha(@theme_border, 0.45);
+  border-radius: 6px;
+  padding: 6px 8px;
+  min-width: 58px;
+}
+
+.core-tile .core-value { font-size: 0.95em; font-weight: 700; }
+
+.core-tile.heat-1 { background: mix(@theme_bg, @theme_accent, 0.08); }
+
+.core-tile.heat-2 { background: mix(@theme_bg, @theme_accent, 0.16); }
+
+.core-tile.heat-3 { background: mix(@theme_bg, @theme_accent, 0.26); }
+
+.core-tile.heat-4 { background: mix(@theme_bg, @theme_accent, 0.38); }
+
+.core-tile.heat-5 { background: mix(@theme_bg, @theme_accent, 0.52); }
+
+
+/* ---------- Key figures ---------- */
+
+.kv-key {
+  font-size: 0.78em;
+  font-weight: 700;
+  color: @theme_dim_text;
+}
+
+.kv-value {
+  font-size: 1.05em;
+  font-weight: 700;
+  color: @theme_text;
+}
+
+
+/* ---------- Usage bars ---------- */
+
+window.tasks-window levelbar > trough {
+  min-height: 6px;
+  border-radius: 999px;
+  background: alpha(@theme_muted, 0.8);
+  border: none;
+  padding: 0;
+}
+
+window.tasks-window levelbar > trough > block {
+  min-height: 6px;
+  border-radius: 999px;
+  border: none;
+}
+
+window.tasks-window levelbar > trough > block.filled {
+  background: @theme_accent;
+}
+
+window.tasks-window levelbar > trough > block.filled.hot {
+  background: @theme_danger;
+}
+
+window.tasks-window levelbar.warn > trough > block.filled {
+  background: @theme_danger;
+}
+
+window.tasks-window levelbar > trough > block.empty {
+  background: transparent;
+}
+
+
+/* Memory composition bar: used / cached / free. */
+
+.composition {
+  min-height: 10px;
+  border-radius: 999px;
+  background: alpha(@theme_muted, 0.8);
+}
+
+.legend-key {
+  min-width: 10px;
+  min-height: 10px;
+  border-radius: 3px;
+  background: alpha(@theme_muted, 0.8);
+}
+
+.legend-key.part-used { background: @theme_accent; }
+
+.legend-key.part-cached { background: alpha(@theme_accent, 0.4); }
+
+.composition .part-used { background: @theme_accent; border-radius: 999px 0 0 999px; }
+
+.composition .part-cached { background: alpha(@theme_accent, 0.4); }
+
+
+/* ---------- Tags ---------- */
+
+.tag {
+  font-size: 0.72em;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: alpha(@theme_muted, 0.55);
+  color: @theme_dim_text;
+}
+
+.tag.accent {
+  background: alpha(@theme_accent, 0.18);
+  color: @theme_text;
+}
+
+.tag.danger {
+  background: alpha(@theme_danger, 0.14);
+  color: @theme_danger;
+}
+
+
+/* Pages that fill the window (tables) run edge to edge under their toolbar. */
+
+.settings-page.fill,
+.settings-page.fill.narrow {
+  padding: 0;
+}
+
+/* A toolbar of two rows (filters over the search) keeps even space around both. */
+.toolbar.stacked {
+  padding: 10px 12px 10px 14px;
+}
+
+.toolbar.stacked > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.toolbar.stacked flowboxchild {
+  padding: 0;
+}
+
+
+/* A page's toolbar sits on a hairline above its table. */
+
+.toolbar {
+  min-height: 46px;
+  margin: 0;
+  padding: 0 12px 0 14px;
+  background: transparent;
+  border-bottom: 1px solid @hairline;
+}
+
+.table-card {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+window.tasks-window columnview {
+  background: transparent;
+  color: @theme_text;
+}
+
+window.tasks-window columnview > header {
+  background: transparent;
+  border-bottom: 1px solid @hairline;
+}
+
+window.tasks-window columnview > header > button {
+  min-height: 34px;
+  padding: 0 16px;
+  border-radius: 0;
+  border: none;
+  border-left: 1px solid @hairline;
+  background: transparent;
+  color: @theme_dim_text;
+}
+
+window.tasks-window columnview > header > button,
+window.tasks-window columnview > header > button > box > label {
+  font-size: 1em;
+  font-weight: 700;
+}
+
+window.tasks-window columnview > header > button:hover {
+  background: @row_hover;
+  color: @theme_text;
+}
+
+window.tasks-window columnview > header > button sort-indicator {
+  color: @theme_accent;
+}
+
+window.tasks-window columnview > listview {
+  background: transparent;
+}
+
+window.tasks-window columnview > listview > row {
+  border-radius: 0;
+  margin: 0;
+  min-height: 35px;
+}
+
+window.tasks-window columnview > listview > row:hover {
+  background: @row_hover;
+}
+
+window.tasks-window columnview > listview > row:selected {
+  background: @nav_active;
+  box-shadow: none;
+  color: @theme_text;
+}
+
+window.tasks-window columnview > listview > row > cell {
+  padding: 6px 16px;
+}
+
+.cell-num {
+  font-family: "JetBrains Mono", "JetBrainsMono Nerd Font", monospace;
+  font-feature-settings: "tnum";
+  font-size: 0.92em;
+}
+
+
+/* Busy cells get a stronger accent wash, five steps. */
+
+.cell-num {
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.cell-num.heat-1 { background: alpha(@theme_accent, 0.07); }
+
+.cell-num.heat-2 { background: alpha(@theme_accent, 0.13); }
+
+.cell-num.heat-3 { background: alpha(@theme_accent, 0.2); }
+
+.cell-num.heat-4 { background: alpha(@theme_accent, 0.28); font-weight: 700; }
+
+.cell-num.heat-5 { background: alpha(@theme_accent, 0.38); font-weight: 700; color: @theme_text; }
+
+.cell-dim {
+  color: @theme_dim_text;
+}
+
+.tree-expander {
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0;
+  margin: 0;
+}
+
+window.tasks-window button.tree-expander {
+  min-height: 18px;
+  min-width: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: @theme_dim_text;
+}
+
+window.tasks-window button.tree-expander:hover {
+  background: @row_hover;
+}
+
+.details-panel.docked {
+  margin-top: 0;
+  margin-left: 10px;
+}
+
+.details-panel {
+  margin-top: 10px;
+  background: mix(@theme_bg, @theme_muted, 0.25);
+  border: 1px solid @hairline;
+  border-radius: 6px;
+  padding: 12px 16px;
+}
+
+.details-title {
+  font-size: 1.1em;
+  font-weight: 800;
+}
+
+.empty-state {
+  padding: 40px;
+  color: @theme_dim_text;
+}
+
+window.tasks-window list.service-list,
+window.tasks-window list.table-card {
+  background: transparent;
+  color: @theme_text;
+}
+
+window.tasks-window list.service-list > row {
+  padding: 0 0 6px;
+  background: transparent;
+}
+
+window.tasks-window list.table-card > row {
+  border-radius: 0;
+  margin: 0;
+}
+
+window.tasks-window list.table-card > row:hover {
+  background: @row_hover;
+}
+
+window.tasks-window list.table-card > row:selected {
+  background: @nav_active;
+  box-shadow: none;
+}
+
+
+/* ---------- Top bar and status bar ---------- */
+
+.window-frame {
+  background: @theme_bg;
+}
+
+.top-bar {
+  min-height: 46px;
+  padding: 0 10px 0 12px;
+  border-bottom: 1px solid @hairline;
+}
+
+.crumbs {
+  margin-left: 8px;
+}
+
+.crumb-root,
+.crumb-sep {
+  color: @theme_dim_text;
+}
+
+.crumb {
+  color: @theme_accent;
+}
+
+window.tasks-window button.bar-button {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 6px;
+  border-color: transparent;
+  background: transparent;
+  color: @theme_dim_text;
+}
+
+window.tasks-window button.bar-button:hover {
+  background: @row_hover;
+  color: @theme_text;
+}
+
+/* A config-file menu in the top bar looks like the other bar buttons. */
+window.tasks-window menubutton.bar-button > button {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 6px;
+  border-color: transparent;
+  background: transparent;
+  color: @theme_dim_text;
+}
+
+window.tasks-window menubutton.bar-button > button:hover {
+  background: @row_hover;
+  color: @theme_text;
+}
+
+window.tasks-window entry.bar-search {
+  min-height: 30px;
+  margin-right: 4px;
+}
+
+.status-bar {
+  min-height: 34px;
+  padding: 0 16px 0 10px;
+  border-top: 1px solid @hairline;
+  font-size: 0.86em;
+  color: @theme_dim_text;
+}
+
+window.tasks-window button.status-help {
+  min-height: 24px;
+  padding: 0 6px;
+  border: none;
+  background: transparent;
+  color: @theme_dim_text;
+  font-weight: 500;
+}
+
+window.tasks-window button.status-help:hover {
+  color: @theme_text;
+}
+
+.status-key {
+  color: @theme_text;
+}
+
+.settings-navigation .nav-group.first {
+  margin-top: 0;
+  padding-top: 6px;
+  border-top: none;
+}
+
+.settings-navigation.compact .nav-group {
+  margin: 8px -6px;
+  padding: 0;
+  min-height: 0;
+  font-size: 0;
+}
+
+.settings-navigation.compact .nav-group.first {
+  border-top: none;
+  margin: 0;
+}
+
+.group-list {
+  border: 1px solid @hairline;
+  border-radius: 10px;
+}
+
+.group-list .settings-option {
+  border: none;
+  border-top: 1px solid @divider;
+  border-radius: 0;
+}
+
+.group-list > .settings-option:first-child,
+.group-list > box:first-child > .settings-option:first-child {
+  border-top: none;
+}
+
+
+/* Toolbar controls sit centred in the row instead of stretching to it. */
+
+.toolbar > *,
+.list-toolbar > * {
+  margin-top: 7px;
+  margin-bottom: 7px;
+}
+
+window.tasks-window columnview > header,
+window.tasks-window columnview > header > button,
+window.tasks-window columnview > header > button > box {
+  font-size: 1em;
+}
+
+
+/* ---------- Settings dialog ---------- */
+
+.settings-veil {
+  background: @veil;
+}
+
+.settings-dialog {
+  background: @theme_bg;
+  border: 1px solid @hairline;
+  border-radius: 14px;
+  box-shadow: 0 8px 40px alpha(@theme_shadow, 0.6);
+}
+
+.settings-dialog-side {
+  min-width: 280px;
+  padding: 22px 14px;
+  border-right: 1px solid @hairline;
+}
+
+.settings-dialog.narrow .settings-dialog-side {
+  min-width: 200px;
+  padding: 18px 8px;
+}
+
+.settings-dialog.narrow .dialog-head {
+  padding: 0 12px 0 20px;
+}
+
+.settings-dialog.narrow .settings-dialog-main .settings-page {
+  padding: 16px 16px 24px;
+}
+
+.dialog-heading {
+  margin: 0 4px 16px;
+  font-size: 0.92em;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  color: @theme_dim_text;
+}
+
+window.tasks-window button.dialog-nav {
+  min-height: 0;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+}
+
+window.tasks-window button.dialog-nav image {
+  margin-top: 2px;
+  color: @theme_dim_text;
+}
+
+window.tasks-window button.dialog-nav:hover {
+  background: @row_hover;
+}
+
+window.tasks-window button.dialog-nav.active {
+  background: @lift_active;
+}
+
+window.tasks-window button.dialog-nav.active image {
+  color: @theme_accent;
+}
+
+.dialog-nav-title {
+  font-weight: 600;
+  color: alpha(@theme_text, 0.82);
+}
+
+window.tasks-window button.dialog-nav.active .dialog-nav-title {
+  color: @theme_text;
+}
+
+.dialog-nav-summary {
+  font-size: 0.86em;
+  color: @theme_dim_text;
+}
+
+.settings-dialog-main {
+  background: @lift;
+}
+
+.dialog-head {
+  min-height: 64px;
+  padding: 0 18px 0 32px;
+  border-bottom: 1px solid @hairline;
+}
+
+.dialog-title {
+  font-size: 1.2em;
+  font-weight: 600;
+}
+
+.dialog-empty {
+  color: @theme_dim_text;
+}
+
+.settings-dialog-main .settings-page {
+  padding: 28px 40px 40px;
+}
+
+.settings-dialog-main .settings-page.narrow {
+  padding: 20px 20px 28px;
+}
