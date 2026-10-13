@@ -23,7 +23,7 @@ use gtk::{gio, glib};
 
 const APP_ID: &str = "io.github.design_nexus.nixe.Tasks";
 
-const USAGE: &str = "Usage: tasks [--section ID] [--toggle]\n\
+const USAGE: &str = "Usage: nixe-tasks [--section ID] [--toggle]\n\
 \n\
   --section ID   open (or switch the open window) to a page: overview, processes, cpu,\n\
                  memory, storage, network, gpu, sensors, startup, services, settings\n\

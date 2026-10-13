@@ -611,7 +611,7 @@ pub fn rebuild(id: &'static str) {
 /// the one showing and restarts its timer.
 pub fn toast(message: &str) {
     let Some(ui) = ui() else {
-        eprintln!("tasks: {message}");
+        eprintln!("nixe-tasks: {message}");
         return;
     };
     let mut u = ui.borrow_mut();
