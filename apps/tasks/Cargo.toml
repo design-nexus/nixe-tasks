@@ -12,6 +12,8 @@ name = "tasks"
 path = "src/main.rs"
 
 [dependencies]
+nixe-core = { path = "../../crates/nixe-core" }
+nixe-theme = { path = "../../crates/nixe-theme" }
 anyhow = "1.0.104"
 async-channel = "2"
 gtk = { version = "0.11", package = "gtk4", features = ["v4_18"] }

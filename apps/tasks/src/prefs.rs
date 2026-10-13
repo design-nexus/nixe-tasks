@@ -1,17 +1,8 @@
 //! This app's own preferences (`~/.config/nexus-tasks/settings.toml`).
 
-use crate::{cmd, paths};
-use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
+pub use nixe_theme::ThemeMode;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "kebab-case")]
-pub enum ThemeMode {
-    /// Follow the active Omarchy theme live.
-    Omarchy,
-    /// Use a bundled or custom theme.
-    Theme,
-}
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -116,24 +107,5 @@ impl Default for Prefs {
     }
 }
 
-thread_local! {
-    static PREFS: RefCell<Prefs> = RefCell::new(load());
-}
+nixe_core::prefs_store!(Prefs);
 
-fn load() -> Prefs {
-    std::fs::read_to_string(paths::prefs_file()).ok().and_then(|text| toml::from_str(&text).ok()).unwrap_or_default()
-}
-
-pub fn get() -> Prefs {
-    PREFS.with(|p| p.borrow().clone())
-}
-
-pub fn update(change: impl FnOnce(&mut Prefs)) {
-    PREFS.with(|p| {
-        let mut prefs = p.borrow_mut();
-        change(&mut prefs);
-        if let Ok(text) = toml::to_string_pretty(&*prefs) {
-            let _ = cmd::atomic_write(&paths::prefs_file(), &text);
-        }
-    });
-}

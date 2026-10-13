@@ -30,6 +30,7 @@ const USAGE: &str = "Usage: tasks [--section ID] [--toggle]\n\
   --toggle       close the window if it's open, otherwise open it (for a keybinding)\n";
 
 fn main() -> glib::ExitCode {
+    nixe_core::app::init(nixe_core::app::App { slug: "nexus-tasks", name: "Tasks" });
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--help" || a == "-h") {
         print!("{USAGE}");
@@ -64,5 +65,6 @@ fn main() -> glib::ExitCode {
         window::present(app, section.as_deref());
         glib::ExitCode::SUCCESS
     });
+    app.connect_shutdown(|_| prefs::flush());
     app.run()
 }
