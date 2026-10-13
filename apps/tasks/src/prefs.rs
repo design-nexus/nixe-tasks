@@ -1,4 +1,4 @@
-//! This app's own preferences (`~/.config/nexus-tasks/settings.toml`).
+//! This app's own preferences (`~/.config/nixe-tasks/settings.toml`).
 
 pub use nixe_theme::ThemeMode;
 

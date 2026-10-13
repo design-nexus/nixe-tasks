@@ -90,7 +90,7 @@ fn build(app: &gtk::Application) {
     window.add_css_class("tasks-window");
     // No client-side titlebar: Hyprland manages the window.
     window.set_titlebar(Some(&gtk::Box::new(gtk::Orientation::Horizontal, 0)));
-    window.set_icon_name(Some("io.github.design_nexus.Tasks"));
+    window.set_icon_name(Some("io.github.design_nexus.nixe.Tasks"));
 
     let sections = sections::all();
 

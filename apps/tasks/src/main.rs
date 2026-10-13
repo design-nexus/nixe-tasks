@@ -21,7 +21,7 @@ mod window;
 use gtk::prelude::*;
 use gtk::{gio, glib};
 
-const APP_ID: &str = "io.github.design_nexus.Tasks";
+const APP_ID: &str = "io.github.design_nexus.nixe.Tasks";
 
 const USAGE: &str = "Usage: tasks [--section ID] [--toggle]\n\
 \n\
@@ -30,7 +30,8 @@ const USAGE: &str = "Usage: tasks [--section ID] [--toggle]\n\
   --toggle       close the window if it's open, otherwise open it (for a keybinding)\n";
 
 fn main() -> glib::ExitCode {
-    nixe_core::app::init(nixe_core::app::App { slug: "nexus-tasks", name: "Tasks" });
+    nixe_core::app::init(nixe_core::app::App { slug: "nixe-tasks", name: "Tasks" });
+    nixe_core::migrate::from(&["nexus-tasks"]);
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--help" || a == "-h") {
         print!("{USAGE}");
