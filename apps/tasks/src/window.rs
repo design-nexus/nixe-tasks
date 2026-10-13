@@ -89,6 +89,7 @@ fn build(app: &gtk::Application) {
     window.add_css_class("tasks-window");
     // No client-side titlebar: Hyprland manages the window.
     window.set_titlebar(Some(&gtk::Box::new(gtk::Orientation::Horizontal, 0)));
+    nixe_ui::keys::install(&window, nixe_ui::keys::Common { settings: Some(settings_dialog::open), shortcuts: Some(show_shortcuts), close: false });
     window.set_icon_name(Some("io.github.design_nexus.nixe.Tasks"));
 
     let sections = sections::all();
@@ -381,7 +382,8 @@ pub const SHORTCUTS: &[(&[&str], &str)] = &[
     (&["Shift", "Delete"], "Kill the selected processes"),
     (&["Right-click"], "Actions for a process, or export a graph"),
     (&["Esc"], "Clear the search"),
-    (&["F1"], "Show these shortcuts"),
+    (&["Ctrl", ","], "Settings"),
+    (&["F1"], "Show these shortcuts (or ?)"),
     (&["Ctrl", "W"], "Close (Ctrl+Q too)"),
 ];
 
