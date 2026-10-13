@@ -68,10 +68,10 @@ While the window is hidden, the per-process and GPU sampling stops too.
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/design-nexus/nexus-tasks/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/design-nexus/nixe/main/install.sh | bash -s -- tasks
 ```
 
-This builds with Cargo and installs `tasks` to `~/.local/bin`, along with a launcher
+This builds with Cargo and installs `nixe-tasks` to `~/.local/bin`, along with a launcher
 entry. Add `-s -- --bind` after `bash` to also print a binding that opens it with
 Ctrl+Shift+Esc:
 
@@ -85,7 +85,7 @@ To remove it, run the same line with `uninstall.sh` in place of `install.sh`. Ad
 ## Usage
 
 ```
-tasks [--section ID] [--toggle]
+nixe-tasks [--section ID] [--toggle]
 ```
 
 `--section` opens (or switches the open window to) `overview`, `processes`, `cpu`,
@@ -95,9 +95,9 @@ tasks [--section ID] [--toggle]
 
 | Path | What |
 | --- | --- |
-| `~/.config/nexus-tasks/settings.toml` | This app's preferences |
-| `~/.config/nexus-tasks/themes/*.toml` | Your own themes |
-| `~/.config/nexus-tasks/state.json` | Startup items added in Tasks |
+| `~/.config/nixe-tasks/settings.toml` | This app's preferences |
+| `~/.config/nixe-tasks/themes/*.toml` | Your own themes |
+| `~/.config/nixe-tasks/state.json` | Startup items added in Tasks |
 | `~/.config/hypr/tasks.lua` | Generated from the above; loaded by `require("hypr.tasks")` |
 | `~/.config/autostart/*.desktop` | XDG autostart overrides (`Hidden=true`) |
 
