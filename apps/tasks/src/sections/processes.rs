@@ -975,7 +975,9 @@ fn details_panel() -> Details {
     // "parent N" is a link to the parent process.
     subtitle.connect_activate_link(|_, uri| {
         if let Some(pid) = uri.strip_prefix("pid:").and_then(|p| p.parse().ok()) {
-            reveal(pid);
+            glib::idle_add_local_once(move || {
+                reveal(pid);
+            });
         }
         glib::Propagation::Stop
     });
