@@ -120,7 +120,7 @@ pub fn generate(state: &State) -> String {
 /// Save our state and regenerate `tasks.lua`.
 pub fn save(state: &State) -> Result<()> {
     cmd::atomic_write(&paths::state_file(), &serde_json::to_string_pretty(state)?)?;
-    cmd::atomic_write(&paths::managed_lua(), &generate(state))?;
+    cmd::atomic_write(&paths::managed_lua(), generate(state))?;
     Ok(())
 }
 
@@ -285,7 +285,7 @@ pub fn remove_user_xdg(e: &XdgEntry) -> Result<()> {
 pub fn add_xdg(app: &apps::App) -> Result<()> {
     let text = std::fs::read_to_string(&app.path)?;
     let id = if app.id.is_empty() { "tasks-item".to_string() } else { app.id.clone() };
-    cmd::atomic_write(&paths::user_xdg_autostart().join(format!("{id}.desktop")), &set_desktop_key(&text, "Hidden", "false"))
+    cmd::atomic_write(&paths::user_xdg_autostart().join(format!("{id}.desktop")), set_desktop_key(&text, "Hidden", "false"))
 }
 
 /// The systemd unit uwsm/systemd-xdg-autostart-generator creates for an entry.
