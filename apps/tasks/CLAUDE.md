@@ -25,6 +25,7 @@
   (`startup::add_include`, with a backup). Managed items are generated into `hypr/tasks.lua`.
 - Hyprland dispatch: `hyprctl eval 'hl.dispatch(hl.dsp.focus({ window = "address:0x…" }))'`
   (and `hl.dsp.window.close`).
+- `nixe-tasks --top cpu|memory` prints the busiest processes and the totals as JSON from two samples (Nixe Assistant's `tasks.top`); no window.
 - Checks: `cargo clippy -- -D warnings`, `cargo test`. Visual check:
   `TASKS_SNAPSHOT=/tmp/x.png [TASKS_SNAPSHOT_PAGE=1] tasks --section cpu`
   (quit any running instance first; it's single-instance). A scratch

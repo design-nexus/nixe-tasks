@@ -27,7 +27,8 @@ const USAGE: &str = "Usage: nixe-tasks [--section ID] [--toggle]\n\
 \n\
   --section ID   open (or switch the open window) to a page: overview, processes, cpu,\n\
                  memory, storage, network, gpu, sensors, startup, services, settings\n\
-  --toggle       close the window if it's open, otherwise open it (for a keybinding)\n";
+  --toggle       close the window if it's open, otherwise open it (for a keybinding)\n\
+  --top cpu|memory  print the busiest processes and the totals as JSON, then exit\n";
 
 fn main() -> glib::ExitCode {
     nixe_core::app::init(nixe_core::app::App { slug: "nixe-tasks", name: "Tasks" });
@@ -35,6 +36,51 @@ fn main() -> glib::ExitCode {
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--help" || a == "-h") {
         print!("{USAGE}");
+        return glib::ExitCode::SUCCESS;
+    }
+
+    // Nixe Assistant's look at the machine: the busiest processes and the totals as JSON,
+    // from two samples half a second apart (no window; nothing is changed).
+    if let Some(i) = args.iter().position(|a| a == "--top") {
+        let by = args.get(i + 1).map(String::as_str).unwrap_or("cpu");
+        let rx = sampler::start(sampler::Control::new(500));
+        let snap = rx.recv_blocking().and_then(|_| rx.recv_blocking());
+        let Ok(snap) = snap else {
+            eprintln!("couldn't sample the system");
+            return glib::ExitCode::FAILURE;
+        };
+        let mut procs = snap.procs.clone().unwrap_or_default();
+        procs.retain(|p| !p.kernel);
+        if by == "memory" {
+            procs.sort_by_key(|p| std::cmp::Reverse(p.rss));
+        } else {
+            procs.sort_by(|a, b| b.cpu.total_cmp(&a.cpu));
+        }
+        let mib = |b: u64| b / (1024 * 1024);
+        let top: Vec<serde_json::Value> = procs
+            .iter()
+            .take(10)
+            .map(|p| serde_json::json!({"pid": p.pid, "name": p.name, "user": p.user, "cpu_percent": (p.cpu * 10.0).round() / 10.0, "memory_mib": mib(p.rss)}))
+            .collect();
+        let gpus: Vec<serde_json::Value> = snap
+            .gpus
+            .iter()
+            .map(|g| serde_json::json!({"name": g.name, "busy_percent": g.util, "memory_mib": g.vram_used.map(mib), "memory_total_mib": g.vram_total.map(mib), "temperature": g.temp}))
+            .collect();
+        println!(
+            "{}",
+            serde_json::json!({
+                "cpu_percent": (snap.cpu.usage * 10.0).round() / 10.0,
+                "load": snap.cpu.load,
+                "memory_used_mib": mib(snap.mem.used),
+                "memory_total_mib": mib(snap.mem.total),
+                "swap_used_mib": mib(snap.mem.swap_used),
+                "processes": snap.process_count,
+                "gpus": gpus,
+                "top": top,
+                "by": if by == "memory" { "memory" } else { "cpu" },
+            })
+        );
         return glib::ExitCode::SUCCESS;
     }
 
