@@ -1,0 +1,10 @@
+{
+  "application": "tasks",
+  "directory": "tasks",
+  "packages": [
+    "nixe-tasks"
+  ],
+  "manifest": "Cargo.toml",
+  "prepare": [],
+  "binaries": []
+}

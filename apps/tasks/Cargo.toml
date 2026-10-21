@@ -3,7 +3,7 @@ name = "nixe-tasks"
 version = "0.1.0"
 description = "A task manager for Omarchy: processes, live performance graphs, startup items and services"
 license = "MIT"
-repository = "https://github.com/design-nexus/nixe"
+repository = "https://github.com/design-nexus/nixe-tasks"
 authors = ["Ken Smith"]
 edition = "2024"
 
@@ -12,9 +12,9 @@ name = "nixe-tasks"
 path = "src/main.rs"
 
 [dependencies]
-nixe-core = { path = "../../crates/nixe-core" }
-nixe-ui = { path = "../../crates/nixe-ui" }
-nixe-theme = { path = "../../crates/nixe-theme" }
+nixe-core = { git = "file:///home/ken/Projects/nixe-migration-97c1899-reviewed/nixe-core", rev = "e4595e68a4fd9b44bd15e95311ace1d0fb669bc4" }
+nixe-ui = { git = "file:///home/ken/Projects/nixe-migration-97c1899-reviewed/nixe-design", rev = "6997fb93fe248e20a19277dbd3ef219cdba18683" }
+nixe-theme = { git = "file:///home/ken/Projects/nixe-migration-97c1899-reviewed/nixe-design", rev = "6997fb93fe248e20a19277dbd3ef219cdba18683" }
 anyhow = "1.0.104"
 async-channel = "2"
 gtk = { version = "0.11", package = "gtk4", features = ["v4_18"] }
