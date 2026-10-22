@@ -68,7 +68,7 @@ While the window is hidden, the per-process and GPU sampling stops too.
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/design-nexus/nixe/main/install.sh | bash -s -- tasks
+curl -fsSL https://raw.githubusercontent.com/design-nexus/nixe-tasks/main/install.sh | bash -s -- tasks
 ```
 
 This builds with Cargo and installs `nixe-tasks` to `~/.local/bin`, along with a launcher
