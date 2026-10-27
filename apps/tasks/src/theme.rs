@@ -1,12 +1,12 @@
-//! Theming: the shared Nixe theme engine, given this app's stylesheet.
+//! Theming: the shared Nyx theme engine, given this app's stylesheet.
 
-pub use nixe_theme::*;
+pub use nyx_theme::*;
 
 use crate::prefs;
 
 /// Install the stylesheet and the current palette, and follow Omarchy live.
 pub fn install() {
-    nixe_theme::install(Style {
+    nyx_theme::install(Style {
         window_class: "tasks-window",
         base_skip: &[],
         css: include_str!("style.css"),

@@ -2,7 +2,7 @@
   "application": "tasks",
   "directory": "tasks",
   "packages": [
-    "nixe-tasks"
+    "nyx-tasks"
   ],
   "manifest": "Cargo.toml",
   "prepare": [],
@@ -13,9 +13,9 @@
       "test",
       "--locked",
       "-p",
-      "nixe-tasks",
+      "nyx-tasks",
       "--bin",
-      "nixe-tasks"
+      "nyx-tasks"
     ]
   ]
 }

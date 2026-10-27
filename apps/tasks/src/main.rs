@@ -21,9 +21,9 @@ mod window;
 use gtk::prelude::*;
 use gtk::{gio, glib};
 
-const APP_ID: &str = "io.github.design_nexus.nixe.Tasks";
+const APP_ID: &str = "io.github.design_nexus.nyx.Tasks";
 
-const USAGE: &str = "Usage: nixe-tasks [--section ID] [--toggle]\n\
+const USAGE: &str = "Usage: nyx-tasks [--section ID] [--toggle]\n\
 \n\
   --section ID   open (or switch the open window) to a page: overview, processes, cpu,\n\
                  memory, storage, network, gpu, sensors, startup, services, settings\n\
@@ -31,15 +31,15 @@ const USAGE: &str = "Usage: nixe-tasks [--section ID] [--toggle]\n\
   --top cpu|memory  print the busiest processes and the totals as JSON, then exit\n";
 
 fn main() -> glib::ExitCode {
-    nixe_core::app::init(nixe_core::app::App { slug: "nixe-tasks", name: "Tasks" });
-    nixe_core::migrate::from(&["nexus-tasks"]);
+    nyx_core::app::init(nyx_core::app::App { slug: "nyx-tasks", name: "Tasks" });
+    nyx_core::migrate::from(&["nexus-tasks"]);
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--help" || a == "-h") {
         print!("{USAGE}");
         return glib::ExitCode::SUCCESS;
     }
 
-    // Nixe Assistant's look at the machine: the busiest processes and the totals as JSON,
+    // Nyx Assistant's look at the machine: the busiest processes and the totals as JSON,
     // from two samples half a second apart (no window; nothing is changed).
     if let Some(i) = args.iter().position(|a| a == "--top") {
         let by = args.get(i + 1).map(String::as_str).unwrap_or("cpu");

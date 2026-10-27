@@ -7,7 +7,7 @@ use crate::sections::{self, Section};
 use crate::widgets;
 use crate::{fmt, live, prefs, settings_dialog, theme};
 use gtk::prelude::*;
-use nixe_ui::chrome;
+use nyx_ui::chrome;
 use gtk::{gdk, glib};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -89,8 +89,8 @@ fn build(app: &gtk::Application) {
     window.add_css_class("tasks-window");
     // No client-side titlebar: Hyprland manages the window.
     window.set_titlebar(Some(&gtk::Box::new(gtk::Orientation::Horizontal, 0)));
-    nixe_ui::keys::install(&window, nixe_ui::keys::Common { settings: Some(settings_dialog::open), shortcuts: Some(show_shortcuts), close: false, palette: Some(crate::palette::open) });
-    window.set_icon_name(Some("io.github.design_nexus.nixe.Tasks"));
+    nyx_ui::keys::install(&window, nyx_ui::keys::Common { settings: Some(settings_dialog::open), shortcuts: Some(show_shortcuts), close: false, palette: Some(crate::palette::open) });
+    window.set_icon_name(Some("io.github.design_nexus.nyx.Tasks"));
 
     let sections = sections::all();
 
@@ -611,7 +611,7 @@ pub fn rebuild(id: &'static str) {
 /// the one showing and restarts its timer.
 pub fn toast(message: &str) {
     let Some(ui) = ui() else {
-        eprintln!("nixe-tasks: {message}");
+        eprintln!("nyx-tasks: {message}");
         return;
     };
     let mut u = ui.borrow_mut();

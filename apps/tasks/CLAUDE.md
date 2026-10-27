@@ -6,7 +6,7 @@
   live/paused pill, the page's config file, settings). Pages have no title header. Settings
   is a card over the window (`settings_dialog.rs`) listing the settings page's groups;
   `navigate("settings")` opens it. Ctrl+F filters processes, or opens Go to elsewhere.
-  The theme, widgets, settings card and window frame come from the `nixe-*` crates.
+  The theme, widgets, settings card and window frame come from the `nyx-*` crates.
   Every colour is a `@theme_*` token; graphs get theirs from `theme::palette()`.
 - `sampler/` runs on its own thread and never touches GTK. It sends a `Snapshot` per
   interval over an async channel. `live.rs` keeps graph history (ring buffers by key,
@@ -25,7 +25,7 @@
   (`startup::add_include`, with a backup). Managed items are generated into `hypr/tasks.lua`.
 - Hyprland dispatch: `hyprctl eval 'hl.dispatch(hl.dsp.focus({ window = "address:0x…" }))'`
   (and `hl.dsp.window.close`).
-- `nixe-tasks --top cpu|memory` prints the busiest processes and the totals as JSON from two samples (Nixe Assistant's `tasks.top`); no window.
+- `nyx-tasks --top cpu|memory` prints the busiest processes and the totals as JSON from two samples (Nyx Assistant's `tasks.top`); no window.
 - Checks: `cargo clippy -- -D warnings`, `cargo test`. Visual check:
   `TASKS_SNAPSHOT=/tmp/x.png [TASKS_SNAPSHOT_PAGE=1] tasks --section cpu`
   (quit any running instance first; it's single-instance). A scratch

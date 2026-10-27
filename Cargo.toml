@@ -6,7 +6,7 @@ members = ["apps/tasks"]
 edition = "2024"
 license = "MIT"
 authors = ["Ken Smith"]
-repository = "https://github.com/design-nexus/nixe-tasks"
+repository = "https://github.com/design-nexus/nyx-tasks"
 
 [profile.release]
 lto = "thin"
