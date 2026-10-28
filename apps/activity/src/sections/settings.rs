@@ -11,7 +11,7 @@ pub fn build(page: &Page) {
     let options: Vec<(String, String)> = app_themes.iter().map(|t| (t.id.clone(), t.name.clone())).collect();
     let (theme_row, theme_dd) = widgets::choice_row(
         "Theme",
-        "Dracula, Catppuccin, Tokyo Night, One Dark Pro and more. Add your own in <tt>~/.config/nyx-tasks/themes</tt>.",
+        "Dracula, Catppuccin, Tokyo Night, One Dark Pro and more. Add your own in <tt>~/.config/nyx-activity/themes</tt>.",
         options,
         &p.theme,
         |id| {
@@ -147,7 +147,7 @@ pub fn build(page: &Page) {
         "Export graph history",
         "Save every graph's history as a CSV file. Right-click a graph to save just that one.",
         "Export…",
-        |_| crate::actions::export_csv("tasks-history", None),
+        |_| crate::actions::export_csv("activity-history", None),
     );
     g.add(&r);
 
@@ -177,7 +177,7 @@ pub fn build(page: &Page) {
     // ----- Alerts -----
     let g = page.group("Alerts");
     g.note(
-        "Desktop notifications, at most one of each kind every 5 minutes. They work while Tasks is open, \
+        "Desktop notifications, at most one of each kind every 5 minutes. They work while Activity is open, \
          on screen or not. The process alert pauses while \"Rest while hidden\" has stopped reading processes.",
     );
     let (r, _) = widgets::switch_row("CPU too hot", "Past the temperature warning above.", p.alert_temp, |on| {
@@ -235,5 +235,5 @@ pub fn build(page: &Page) {
     for (keys, what) in crate::window::SHORTCUTS {
         g.add(&widgets::row(what, "", Some(crate::window::key_caps(keys).upcast_ref())));
     }
-    g.note("To open Tasks with a key, bind <tt>tasks --toggle</tt> in <tt>~/.config/hypr/bindings.lua</tt>, for example Ctrl+Shift+Esc.");
+    g.note("To open Activity with a key, bind <tt>nyx-activity --toggle</tt> in <tt>~/.config/hypr/bindings.lua</tt>, for example Ctrl+Shift+Esc.");
 }

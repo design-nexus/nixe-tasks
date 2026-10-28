@@ -1,25 +1,25 @@
 [Desktop Entry]
 Type=Application
-Name=Tasks
+Name=Activity
 GenericName=Task Manager
 Comment=Processes, live performance graphs, startup items and services
-Exec=nyx-tasks
-Icon=io.github.design_nexus.nyx.Tasks
+Exec=nyx-activity
+Icon=io.github.design_nexus.nyx.Activity
 Terminal=false
 StartupNotify=true
-StartupWMClass=io.github.design_nexus.nyx.Tasks
+StartupWMClass=io.github.design_nexus.nyx.Activity
 Categories=System;Monitor;GTK;
-Keywords=task;manager;process;kill;cpu;memory;ram;gpu;disk;network;startup;autostart;services;systemd;monitor;
+Keywords=activity;task;manager;process;kill;cpu;memory;ram;gpu;disk;network;startup;autostart;services;systemd;monitor;
 Actions=processes;performance;startup;
 
 [Desktop Action processes]
 Name=Processes
-Exec=nyx-tasks --section processes
+Exec=nyx-activity --section processes
 
 [Desktop Action performance]
 Name=Performance
-Exec=nyx-tasks --section cpu
+Exec=nyx-activity --section cpu
 
 [Desktop Action startup]
 Name=Startup Items
-Exec=nyx-tasks --section startup
+Exec=nyx-activity --section startup

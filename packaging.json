@@ -1,8 +1,8 @@
 {
-  "application": "tasks",
-  "directory": "tasks",
+  "application": "activity",
+  "directory": "activity",
   "packages": [
-    "nyx-tasks"
+    "nyx-activity"
   ],
   "manifest": "Cargo.toml",
   "prepare": [],
@@ -13,9 +13,9 @@
       "test",
       "--locked",
       "-p",
-      "nyx-tasks",
+      "nyx-activity",
       "--bin",
-      "nyx-tasks"
+      "nyx-activity"
     ]
   ]
 }

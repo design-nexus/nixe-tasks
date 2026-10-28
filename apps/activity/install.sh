@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install tasks: the Nyx suite installer, for this app. Options pass through
+# Install Activity: the Nyx suite installer, for this app. Options pass through
 # (see ../../install.sh), e.g. ./install.sh --default
 here=$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-exec "$here/../../install.sh" tasks "$@"
+exec "$here/../../install.sh" activity "$@"

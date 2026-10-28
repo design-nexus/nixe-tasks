@@ -65,7 +65,7 @@ pub fn all() -> Vec<Section> {
         Section {
             id: "cpu",
             title: "CPU",
-            icon: "tasks-cpu-symbolic",
+            icon: "activity-cpu-symbolic",
             group: "Performance",
             description: "Processor usage per core, clock speeds and load.",
             keywords: "processor cores threads frequency clock load average governor",
@@ -77,7 +77,7 @@ pub fn all() -> Vec<Section> {
         Section {
             id: "memory",
             title: "Memory",
-            icon: "tasks-memory-symbolic",
+            icon: "activity-memory-symbolic",
             group: "Performance",
             description: "RAM, cache, swap and compressed memory.",
             keywords: "ram swap zram cache buffers available",
@@ -115,7 +115,7 @@ pub fn all() -> Vec<Section> {
         Section {
             id: "gpu",
             title: "GPU",
-            icon: "tasks-gpu-symbolic",
+            icon: "activity-gpu-symbolic",
             group: "Performance",
             description: "Graphics usage, video memory, clocks and power.",
             keywords: "graphics nvidia intel amd vram video card",
@@ -134,7 +134,7 @@ pub fn all() -> Vec<Section> {
         Section {
             id: "sensors",
             title: "Sensors & Power",
-            icon: "tasks-thermometer-symbolic",
+            icon: "activity-thermometer-symbolic",
             group: "Performance",
             description: "Temperatures, fans and the battery.",
             keywords: "temperature thermal fan rpm battery charge power watts hwmon",

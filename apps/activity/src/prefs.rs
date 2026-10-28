@@ -1,4 +1,4 @@
-//! This app's own preferences (`~/.config/nyx-tasks/settings.toml`).
+//! This app's own preferences (`~/.config/nyx-activity/settings.toml`).
 
 pub use nyx_theme::ThemeMode;
 

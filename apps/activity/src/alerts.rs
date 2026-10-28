@@ -1,6 +1,6 @@
 //! Desktop notifications when something needs a look: a hot CPU, memory running
 //! out, a process stuck at high CPU, or a service that failed. They run while
-//! Tasks is open (on screen or not), and each kind waits a while before repeating.
+//! Activity is open (on screen or not), and each kind waits a while before repeating.
 
 use crate::sampler::Snapshot;
 use crate::{cmd, fmt, live, prefs};

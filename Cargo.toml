@@ -1,12 +1,12 @@
 [workspace]
 resolver = "3"
-members = ["apps/tasks"]
+members = ["apps/activity"]
 
 [workspace.package]
 edition = "2024"
 license = "MIT"
 authors = ["Ken Smith"]
-repository = "https://github.com/design-nexus/nyx-tasks"
+repository = "https://github.com/design-nexus/nyx-activity"
 
 [profile.release]
 lto = "thin"

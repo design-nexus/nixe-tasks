@@ -4,17 +4,17 @@
 #   curl -fsSL https://raw.githubusercontent.com/design-nexus/nyx/main/install.sh | bash -s -- music pdf
 #   curl -fsSL https://raw.githubusercontent.com/design-nexus/nyx/main/install.sh | bash -s -- all
 #
-# Apps: settings contacts tasks torrents pdf notepad music media-player theater chat fonts archive office photos glimpse store git passwords weather news capture pulse
+# Apps: settings contacts activity torrents pdf notepad music media-player theater chat fonts archive office photos glimpse store git passwords weather news capture pulse
 # Options:
 #   --default  make the installed apps open their file types
 #   --gear     also add the Settings gear to the Omarchy bar (with settings)
 #   --list     list the apps and exit
 set -euo pipefail
 
-REPO="design-nexus/nyx-tasks"
+REPO="design-nexus/nyx-activity"
 asroot() { if [[ -t 0 ]]; then sudo "$@"; else pkexec "$@"; fi; }
-ALL=(tasks)
-(($#)) || set -- tasks
+ALL=(activity)
+(($#)) || set -- activity
 
 say() { printf '\033[1m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[33m==>\033[0m %s\n' "$*" >&2; }
@@ -32,7 +32,7 @@ app_info() {
     git) ids="Git" deps="gtksourceview5 libsecret git-lfs" ;;
     passwords) ids="Passwords" bins="nyx-passwords nyx-passwordsd nyx-passwords-settings nyx-passwords-bridge nyx-passwords-assistant" deps="libsecret librsvg zip" ;;
     store) ids="Store" bins="nyx-store nyx-store-helper" deps="pacman appstream libarchive polkit base-devel libjxl" ;;
-    tasks) ids="Tasks" old_bins="tasks" ;;
+    activity) ids="Activity" old_bins="tasks nyx-tasks" old_desktops="io.github.design_nexus.Tasks.desktop io.github.design_nexus.nyx.Tasks.desktop" old_icons="io.github.design_nexus.Tasks.svg io.github.design_nexus.nyx.Tasks.svg" ;;
     torrents) ids="Torrents" old_bins="torrents" deps="libtorrent-rasterbar boost" defaults=true ;;
     pdf) ids="Pdf" old_bins="pdf" deps="poppler-glib" defaults=true ;;
     notepad) ids="Notepad" old_bins="notepad" ;;
@@ -66,7 +66,7 @@ app_info() {
 
 # ---------- Arguments ----------
 # This standalone checkout installs only its owning application.
-if [[ $# == 0 || ${1:-} == --* ]]; then set -- tasks "$@"; fi
+if [[ $# == 0 || ${1:-} == --* ]]; then set -- activity "$@"; fi
 apps=() make_default=false gear=false
 for a in "$@"; do
   case $a in
@@ -84,7 +84,7 @@ done
 mapfile -t apps < <(printf '%s\n' "${apps[@]}" | awk '!seen[$0]++')
 
 for selected in "${apps[@]}"; do
-  [[ $selected == tasks ]] || die "This repository installs only tasks."
+  [[ $selected == activity ]] || die "This repository installs only activity."
 done
 
 command -v hyprctl >/dev/null || warn "Hyprland wasn't found. Nyx apps are made for Omarchy (Hyprland), but run elsewhere too."
@@ -156,7 +156,7 @@ elif [[ ${NYX_BUILD:-} != 1 ]] && tags=$(for a in "${apps[@]}"; do t=$(release_t
   src="$work/src"
   mkdir -p "$src"
   for t in $tags; do
-    curl -fsSL "https://github.com/$REPO/releases/download/$t/tasks-x86_64.tar.gz" | tar -xz -C "$src"
+    curl -fsSL "https://github.com/$REPO/releases/download/$t/activity-x86_64.tar.gz" | tar -xz -C "$src"
   done
   prebuilt=true
 else
@@ -326,6 +326,7 @@ MANIFEST
   if [[ -f $mimeapps ]]; then
     for old in $old_desktops; do
       case $old in
+        *Tasks.desktop) new=io.github.design_nexus.nyx.Activity.desktop ;;
         io.github.design_nexus.*) new=${old/design_nexus./design_nexus.nyx.} ;;
         nexus-photos.desktop) new=io.github.design_nexus.nyx.Photos.desktop ;;
         npv.desktop) new=io.github.design_nexus.nyx.PhotoViewer.desktop ;;

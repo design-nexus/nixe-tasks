@@ -1,4 +1,4 @@
-# Tasks — notes for working on this repo
+# Activity — notes for working on this repo
 
 - GTK4 (gtk4-rs 0.11) + Rust. No libadwaita. The window is one flat, monospace surface
   split by hairlines (see `STYLE.md`): the sidebar (its head holds the toggle and
@@ -22,11 +22,12 @@
   `nvidia-smi` only while `runtime_status` isn't `suspended`. Check with
   `cat /sys/bus/pci/devices/0000:01:00.0/power/runtime_status` while the app runs.
 - Never edit the user's Hyprland files except the one `require` line added on request
-  (`startup::add_include`, with a backup). Managed items are generated into `hypr/tasks.lua`.
+  (`startup::add_include`, with a backup), and `startup::move_old_include` renaming it from
+  `hypr.tasks` once (the app was called Tasks). Managed items are generated into `hypr/activity.lua`.
 - Hyprland dispatch: `hyprctl eval 'hl.dispatch(hl.dsp.focus({ window = "address:0x…" }))'`
   (and `hl.dsp.window.close`).
-- `nyx-tasks --top cpu|memory` prints the busiest processes and the totals as JSON from two samples (Nyx Assistant's `tasks.top`); no window.
+- `nyx-activity --top cpu|memory` prints the busiest processes and the totals as JSON from two samples (Nyx Assistant's `tasks.top`); no window.
 - Checks: `cargo clippy -- -D warnings`, `cargo test`. Visual check:
-  `TASKS_SNAPSHOT=/tmp/x.png [TASKS_SNAPSHOT_PAGE=1] tasks --section cpu`
+  `ACTIVITY_SNAPSHOT=/tmp/x.png [ACTIVITY_SNAPSHOT_PAGE=1] nyx-activity --section cpu`
   (quit any running instance first; it's single-instance). A scratch
   `XDG_CONFIG_HOME` with `theme = "catppuccin-latte"`, `mode = "theme"` checks light mode.

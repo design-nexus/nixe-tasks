@@ -146,13 +146,13 @@ fn fill(body: &gtk::Box, d: Data) {
     summary.append(&flow);
     body.append(&summary);
 
-    // ----- Added in Tasks -----
+    // ----- Added in Activity -----
     let list =
-        group(body, "Added here", "Started by Hyprland when you log in. Tasks keeps these in <tt>~/.config/hypr/tasks.lua</tt>.");
+        group(body, "Added here", "Started by Hyprland when you log in. Activity keeps these in <tt>~/.config/hypr/activity.lua</tt>.");
     if !d.managed.hyprland.is_empty() && !d.included {
         let b = widgets::banner(
-            "Hyprland doesn't load <tt>tasks.lua</tt> yet, so these won't start. \
-             Tasks can add one line, <tt>require(\"hypr.tasks\")</tt>, to the end of <tt>hyprland.lua</tt> (after a backup).",
+            "Hyprland doesn't load <tt>activity.lua</tt> yet, so these won't start. \
+             Activity can add one line, <tt>require(\"hypr.activity\")</tt>, to the end of <tt>hyprland.lua</tt> (after a backup).",
             true,
         );
         let add = gtk::Button::with_label("Add the line");
@@ -277,7 +277,7 @@ fn fill(body: &gtk::Box, d: Data) {
     let list = group(
         body,
         "Your Hyprland autostart",
-        "From <tt>~/.config/hypr/autostart.lua</tt>. Tasks doesn't rewrite your config; use Open config to change these.",
+        "From <tt>~/.config/hypr/autostart.lua</tt>. Activity doesn't rewrite your config; use Open config to change these.",
     );
     if d.user.is_empty() {
         list.append(&widgets::row("Nothing here", "Your autostart.lua doesn't start anything.", None));

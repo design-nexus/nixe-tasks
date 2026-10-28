@@ -1,4 +1,4 @@
-//! Tasks — a task manager for Omarchy.
+//! Activity — a task manager for Omarchy.
 
 mod actions;
 mod alerts;
@@ -21,9 +21,9 @@ mod window;
 use gtk::prelude::*;
 use gtk::{gio, glib};
 
-const APP_ID: &str = "io.github.design_nexus.nyx.Tasks";
+const APP_ID: &str = "io.github.design_nexus.nyx.Activity";
 
-const USAGE: &str = "Usage: nyx-tasks [--section ID] [--toggle]\n\
+const USAGE: &str = "Usage: nyx-activity [--section ID] [--toggle]\n\
 \n\
   --section ID   open (or switch the open window) to a page: overview, processes, cpu,\n\
                  memory, storage, network, gpu, sensors, startup, services, settings\n\
@@ -31,8 +31,9 @@ const USAGE: &str = "Usage: nyx-tasks [--section ID] [--toggle]\n\
   --top cpu|memory  print the busiest processes and the totals as JSON, then exit\n";
 
 fn main() -> glib::ExitCode {
-    nyx_core::app::init(nyx_core::app::App { slug: "nyx-tasks", name: "Tasks" });
-    nyx_core::migrate::from(&["nexus-tasks"]);
+    nyx_core::app::init(nyx_core::app::App { slug: "nyx-activity", name: "Activity" });
+    nyx_core::migrate::from(&["nexus-tasks", "nixe-tasks", "nyx-tasks"]);
+    startup::move_old_include();
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--help" || a == "-h") {
         print!("{USAGE}");

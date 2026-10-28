@@ -51,9 +51,9 @@ pub fn present(app: &gtk::Application, section: Option<&str>) {
     crate::alerts::start();
     build(app);
     navigate(section.unwrap_or("overview"));
-    // Developer aid: TASKS_SNAPSHOT=/path.png renders the window to a PNG
+    // Developer aid: ACTIVITY_SNAPSHOT=/path.png renders the window to a PNG
     // (invisibly) and quits, so layouts can be checked without a visible window.
-    if let Some(out) = std::env::var_os("TASKS_SNAPSHOT") {
+    if let Some(out) = std::env::var_os("ACTIVITY_SNAPSHOT") {
         snapshot_and_quit(app, std::path::PathBuf::from(out));
         return;
     }
@@ -66,10 +66,10 @@ pub fn present(app: &gtk::Application, section: Option<&str>) {
 /// They're written to the cache once and added to the icon search path.
 fn install_icons() {
     const ICONS: &[(&str, &str)] = &[
-        ("tasks-cpu-symbolic.svg", include_str!("../data/icons/tasks-cpu-symbolic.svg")),
-        ("tasks-memory-symbolic.svg", include_str!("../data/icons/tasks-memory-symbolic.svg")),
-        ("tasks-gpu-symbolic.svg", include_str!("../data/icons/tasks-gpu-symbolic.svg")),
-        ("tasks-thermometer-symbolic.svg", include_str!("../data/icons/tasks-thermometer-symbolic.svg")),
+        ("activity-cpu-symbolic.svg", include_str!("../data/icons/activity-cpu-symbolic.svg")),
+        ("activity-memory-symbolic.svg", include_str!("../data/icons/activity-memory-symbolic.svg")),
+        ("activity-gpu-symbolic.svg", include_str!("../data/icons/activity-gpu-symbolic.svg")),
+        ("activity-thermometer-symbolic.svg", include_str!("../data/icons/activity-thermometer-symbolic.svg")),
     ];
     let dir = crate::paths::cache_dir().join("icons");
     for (name, svg) in ICONS {
@@ -85,12 +85,12 @@ fn install_icons() {
 
 fn build(app: &gtk::Application) {
     let window =
-        gtk::ApplicationWindow::builder().application(app).title("Tasks").default_width(1120).default_height(800).build();
-    window.add_css_class("tasks-window");
+        gtk::ApplicationWindow::builder().application(app).title("Activity").default_width(1120).default_height(800).build();
+    window.add_css_class("activity-window");
     // No client-side titlebar: Hyprland manages the window.
     window.set_titlebar(Some(&gtk::Box::new(gtk::Orientation::Horizontal, 0)));
     nyx_ui::keys::install(&window, nyx_ui::keys::Common { settings: Some(settings_dialog::open), shortcuts: Some(show_shortcuts), close: false, palette: Some(crate::palette::open) });
-    window.set_icon_name(Some("io.github.design_nexus.nyx.Tasks"));
+    window.set_icon_name(Some("io.github.design_nexus.nyx.Activity"));
 
     let sections = sections::all();
 
@@ -148,7 +148,7 @@ fn build(app: &gtk::Application) {
         .vexpand(true)
         .child(&list)
         .build();
-    let head = chrome::sidebar_head("Tasks", Some("Filter processes, or go to anything (Ctrl+F)"));
+    let head = chrome::sidebar_head("Activity", Some("Filter processes, or go to anything (Ctrl+F)"));
     head.toggle.connect_clicked(|_| toggle_sidebar());
     if let Some(find_button) = &head.search {
         find_button.connect_clicked(|_| find());
@@ -582,7 +582,7 @@ pub fn navigate(id: &str) {
     u.stack.set_visible_child_name(id);
     u.current = id;
     if let Some(s) = u.sections.iter().find(|s| s.id == id) {
-        chrome::set_title(&u.window, "Tasks", s.title);
+        chrome::set_title(&u.window, "Activity", s.title);
         while let Some(c) = u.edit.first_child() {
             u.edit.remove(&c);
         }
@@ -611,7 +611,7 @@ pub fn rebuild(id: &'static str) {
 /// the one showing and restarts its timer.
 pub fn toast(message: &str) {
     let Some(ui) = ui() else {
-        eprintln!("nyx-tasks: {message}");
+        eprintln!("nyx-activity: {message}");
         return;
     };
     let mut u = ui.borrow_mut();
@@ -685,17 +685,17 @@ fn snapshot_and_quit(app: &gtk::Application, out: std::path::PathBuf) {
     let window = ui.borrow().window.clone();
     window.set_opacity(0.01);
     // A distinct title lets a window rule float it at a set size for screenshots.
-    window.set_title(Some("Tasks snapshot"));
+    window.set_title(Some("Activity snapshot"));
     window.set_default_size(
-        std::env::var("TASKS_SNAPSHOT_W").ok().and_then(|v| v.parse().ok()).unwrap_or(1120),
-        std::env::var("TASKS_SNAPSHOT_H").ok().and_then(|v| v.parse().ok()).unwrap_or(820),
+        std::env::var("ACTIVITY_SNAPSHOT_W").ok().and_then(|v| v.parse().ok()).unwrap_or(1120),
+        std::env::var("ACTIVITY_SNAPSHOT_H").ok().and_then(|v| v.parse().ok()).unwrap_or(820),
     );
     window.present();
     let app = app.clone();
-    let delay = std::env::var("TASKS_SNAPSHOT_DELAY").ok().and_then(|v| v.parse().ok()).unwrap_or(1800);
+    let delay = std::env::var("ACTIVITY_SNAPSHOT_DELAY").ok().and_then(|v| v.parse().ok()).unwrap_or(1800);
     glib::timeout_add_local_once(std::time::Duration::from_millis(delay), move || {
-        // TASKS_SNAPSHOT_PAGE=1 renders the whole current page, not just what fits.
-        let target = if std::env::var_os("TASKS_SNAPSHOT_PAGE").is_some() {
+        // ACTIVITY_SNAPSHOT_PAGE=1 renders the whole current page, not just what fits.
+        let target = if std::env::var_os("ACTIVITY_SNAPSHOT_PAGE").is_some() {
             UI.with(|cell| cell.borrow().clone()).and_then(|u| {
                 let u = u.borrow();
                 u.pages.get(u.current).and_then(|p| p.child()).and_then(|v| v.first_child())

@@ -20,7 +20,7 @@
   margin: 0;
 }
 
-window.tasks-window button.group-action {
+window.activity-window button.group-action {
   min-height: 26px;
   min-width: 26px;
   padding: 0 4px;
@@ -47,7 +47,7 @@ label.warning-text,
 
 /* ---------- Buttons ---------- */
 
-window.tasks-window button {
+window.activity-window button {
   min-height: 32px;
   padding: 0 12px;
   border-radius: 6px;
@@ -58,41 +58,41 @@ window.tasks-window button {
   transition: background 150ms ease-out, border-color 150ms ease-out;
 }
 
-window.tasks-window button:hover {
+window.activity-window button:hover {
   background: @row_hover;
 }
 
-window.tasks-window button:active {
+window.activity-window button:active {
   background: alpha(@theme_accent, 0.22);
 }
 
-window.tasks-window button.suggested-action {
+window.activity-window button.suggested-action {
   background: @nav_active;
   border-color: transparent;
   color: @theme_text;
   font-weight: 600;
 }
 
-window.tasks-window button.suggested-action:hover {
+window.activity-window button.suggested-action:hover {
   background: mix(@theme_bg, @theme_accent, 0.26);
 }
 
-window.tasks-window button.destructive-action {
+window.activity-window button.destructive-action {
   background: alpha(@theme_danger, 0.12);
   border-color: alpha(@theme_danger, 0.55);
   color: @theme_danger;
 }
 
-window.tasks-window button.flat {
+window.activity-window button.flat {
   background: transparent;
   border-color: transparent;
 }
 
-window.tasks-window button.flat:hover {
+window.activity-window button.flat:hover {
   background: @row_hover;
 }
 
-window.tasks-window button.reset-button {
+window.activity-window button.reset-button {
   min-height: 26px;
   min-width: 26px;
   padding: 0;
@@ -100,26 +100,26 @@ window.tasks-window button.reset-button {
   color: @theme_dim_text;
 }
 
-window.tasks-window button.chip {
+window.activity-window button.chip {
   min-height: 28px;
   padding: 0 12px;
   border-radius: 6px;
   font-size: 0.9em;
 }
 
-window.tasks-window button.chip.small {
+window.activity-window button.chip.small {
   min-height: 22px;
   padding: 0 9px;
   font-size: 0.82em;
 }
 
-window.tasks-window button.chip.selected {
+window.activity-window button.chip.selected {
   background: @nav_active;
   border-color: transparent;
   color: @theme_text;
 }
 
-window.tasks-window dropdown > button {
+window.activity-window dropdown > button {
   min-width: 160px;
 }
 
@@ -129,27 +129,27 @@ window.tasks-window dropdown > button {
 }
 
 /* Buttons on a banner are its action: a solid accent, so they stand out on the tint. */
-window.tasks-window .banner button {
+window.activity-window .banner button {
   background: @theme_accent;
   border-color: @theme_accent;
   color: @theme_on_accent;
   font-weight: 600;
 }
 
-window.tasks-window .banner button:hover {
+window.activity-window .banner button:hover {
   background: mix(@theme_accent, @theme_text, 0.12);
 }
 
-window.tasks-window .banner.warning button {
+window.activity-window .banner.warning button {
   background: @theme_danger;
   border-color: @theme_danger;
 }
 
-window.tasks-window .banner.warning button:hover {
+window.activity-window .banner.warning button:hover {
   background: mix(@theme_danger, @theme_text, 0.12);
 }
 
-window.tasks-window button.live-pill {
+window.activity-window button.live-pill {
   min-height: 22px;
   padding: 0 8px;
   border-color: transparent;
@@ -158,14 +158,14 @@ window.tasks-window button.live-pill {
   color: @theme_dim_text;
 }
 
-window.tasks-window button.live-pill.paused {
+window.activity-window button.live-pill.paused {
   background: alpha(@theme_danger, 0.12);
   color: @theme_danger;
 }
 
 /* ---------- Stat tiles ---------- */
 
-window.tasks-window button.stat-tile {
+window.activity-window button.stat-tile {
   padding: 12px 14px 10px;
   border-radius: 8px;
   background: mix(@theme_bg, @theme_muted, 0.25);
@@ -173,7 +173,7 @@ window.tasks-window button.stat-tile {
   min-width: 150px;
 }
 
-window.tasks-window button.stat-tile:hover {
+window.activity-window button.stat-tile:hover {
   background: mix(@theme_bg, @theme_muted, 0.32);
   border-color: alpha(@theme_accent, 0.55);
 }
@@ -319,7 +319,7 @@ window.tasks-window button.stat-tile:hover {
 
 /* ---------- Usage bars ---------- */
 
-window.tasks-window levelbar > trough {
+window.activity-window levelbar > trough {
   min-height: 6px;
   border-radius: 999px;
   background: alpha(@theme_muted, 0.8);
@@ -327,25 +327,25 @@ window.tasks-window levelbar > trough {
   padding: 0;
 }
 
-window.tasks-window levelbar > trough > block {
+window.activity-window levelbar > trough > block {
   min-height: 6px;
   border-radius: 999px;
   border: none;
 }
 
-window.tasks-window levelbar > trough > block.filled {
+window.activity-window levelbar > trough > block.filled {
   background: @theme_accent;
 }
 
-window.tasks-window levelbar > trough > block.filled.hot {
+window.activity-window levelbar > trough > block.filled.hot {
   background: @theme_danger;
 }
 
-window.tasks-window levelbar.warn > trough > block.filled {
+window.activity-window levelbar.warn > trough > block.filled {
   background: @theme_danger;
 }
 
-window.tasks-window levelbar > trough > block.empty {
+window.activity-window levelbar > trough > block.empty {
   background: transparent;
 }
 
@@ -396,7 +396,7 @@ window.tasks-window levelbar > trough > block.empty {
   border-bottom: 1px solid @hairline;
 }
 
-window.tasks-window columnview > header > button {
+window.activity-window columnview > header > button {
   min-height: 34px;
   padding: 0 16px;
   border-radius: 0;
@@ -406,13 +406,13 @@ window.tasks-window columnview > header > button {
   color: @theme_dim_text;
 }
 
-window.tasks-window columnview > header > button,
-window.tasks-window columnview > header > button > box > label {
+window.activity-window columnview > header > button,
+window.activity-window columnview > header > button > box > label {
   font-size: 1em;
   font-weight: 700;
 }
 
-window.tasks-window columnview > header > button:hover {
+window.activity-window columnview > header > button:hover {
   background: @row_hover;
   color: @theme_text;
 }
@@ -451,7 +451,7 @@ window.tasks-window columnview > header > button:hover {
   margin: 0;
 }
 
-window.tasks-window button.tree-expander {
+window.activity-window button.tree-expander {
   min-height: 18px;
   min-width: 18px;
   padding: 0;
@@ -460,7 +460,7 @@ window.tasks-window button.tree-expander {
   color: @theme_dim_text;
 }
 
-window.tasks-window button.tree-expander:hover {
+window.activity-window button.tree-expander:hover {
   background: @row_hover;
 }
 
@@ -482,32 +482,32 @@ window.tasks-window button.tree-expander:hover {
   font-weight: 800;
 }
 
-window.tasks-window list.service-list,
-window.tasks-window list.table-card {
+window.activity-window list.service-list,
+window.activity-window list.table-card {
   background: transparent;
   color: @theme_text;
 }
 
-window.tasks-window list.service-list > row {
+window.activity-window list.service-list > row {
   padding: 0 0 6px;
   background: transparent;
 }
 
-window.tasks-window list.table-card > row {
+window.activity-window list.table-card > row {
   border-radius: 0;
   margin: 0;
 }
 
-window.tasks-window list.table-card > row:hover {
+window.activity-window list.table-card > row:hover {
   background: @row_hover;
 }
 
-window.tasks-window list.table-card > row:selected {
+window.activity-window list.table-card > row:selected {
   background: @nav_active;
   box-shadow: none;
 }
 
-window.tasks-window button.bar-button {
+window.activity-window button.bar-button {
   min-width: 30px;
   min-height: 30px;
   padding: 0;
@@ -517,13 +517,13 @@ window.tasks-window button.bar-button {
   color: @theme_dim_text;
 }
 
-window.tasks-window button.bar-button:hover {
+window.activity-window button.bar-button:hover {
   background: @row_hover;
   color: @theme_text;
 }
 
 /* A config-file menu in the top bar looks like the other bar buttons. */
-window.tasks-window menubutton.bar-button > button {
+window.activity-window menubutton.bar-button > button {
   min-width: 30px;
   min-height: 30px;
   padding: 0;
@@ -533,12 +533,12 @@ window.tasks-window menubutton.bar-button > button {
   color: @theme_dim_text;
 }
 
-window.tasks-window menubutton.bar-button > button:hover {
+window.activity-window menubutton.bar-button > button:hover {
   background: @row_hover;
   color: @theme_text;
 }
 
-window.tasks-window button.status-help {
+window.activity-window button.status-help {
   min-height: 24px;
   padding: 0 6px;
   border: none;
@@ -547,7 +547,7 @@ window.tasks-window button.status-help {
   font-weight: 500;
 }
 
-window.tasks-window button.status-help:hover {
+window.activity-window button.status-help:hover {
   color: @theme_text;
 }
 
@@ -559,13 +559,13 @@ window.tasks-window button.status-help:hover {
   margin-bottom: 7px;
 }
 
-window.tasks-window columnview > header,
-window.tasks-window columnview > header > button,
-window.tasks-window columnview > header > button > box {
+window.activity-window columnview > header,
+window.activity-window columnview > header > button,
+window.activity-window columnview > header > button > box {
   font-size: 1em;
 }
 
-window.tasks-window button.dialog-nav {
+window.activity-window button.dialog-nav {
   min-height: 0;
   padding: 10px 14px;
   border: none;
@@ -573,10 +573,10 @@ window.tasks-window button.dialog-nav {
   background: transparent;
 }
 
-window.tasks-window button.dialog-nav:hover {
+window.activity-window button.dialog-nav:hover {
   background: @row_hover;
 }
 
-window.tasks-window button.dialog-nav.active {
+window.activity-window button.dialog-nav.active {
   background: @lift_active;
 }

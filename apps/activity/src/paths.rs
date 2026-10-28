@@ -15,7 +15,7 @@ pub fn hypr_dir() -> PathBuf {
 
 /// The single Hyprland file this app writes (startup items it manages).
 pub fn managed_lua() -> PathBuf {
-    hypr_dir().join("tasks.lua")
+    hypr_dir().join("activity.lua")
 }
 
 pub fn hyprland_lua() -> PathBuf {

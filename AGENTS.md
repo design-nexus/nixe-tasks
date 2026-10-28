@@ -1,6 +1,6 @@
-# Tasks
+# Activity
 
-Application source: apps/tasks. Owned domain crates: none.
+Application source: apps/activity. Owned domain crates: none.
 Keep all existing runtime integration resources and public protocols.
 
 Commands: `cargo build --release --locked --manifest-path Cargo.toml`; `./install.sh`

@@ -5,11 +5,11 @@
 #   ./uninstall.sh all --purge        remove every app and its settings and data
 set -euo pipefail
 
-ALL=(tasks)
+ALL=(activity)
 say() { printf '\033[1m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[31m==>\033[0m %s\n' "$*" >&2; exit 1; }
 
-if [[ $# == 0 || ${1:-} == --* ]]; then set -- tasks "$@"; fi
+if [[ $# == 0 || ${1:-} == --* ]]; then set -- activity "$@"; fi
 apps=() purge=false
 for a in "$@"; do
   case $a in
@@ -23,7 +23,7 @@ done
 ((${#apps[@]})) || die "Name the apps to remove (or 'all'): ${ALL[*]}"
 
 for selected in "${apps[@]}"; do
-  [[ $selected == tasks ]] || die "This repository removes only tasks."
+  [[ $selected == activity ]] || die "This repository removes only activity."
 done
 bin="$HOME/.local/bin"
 share="${XDG_DATA_HOME:-$HOME/.local/share}"

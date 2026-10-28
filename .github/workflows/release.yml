@@ -26,7 +26,7 @@ jobs:
       - name: Pinned build prerequisites
         run: |
           source <(sed -n '/^app_info()/,/^}/p' install.sh)
-          app_info tasks
+          app_info activity
           bash tools/ci-bootstrap.sh $deps
       - run: python3 tools/ci.py
       - run: python3 tools/release.py --tag "$RELEASE_TAG" --publish

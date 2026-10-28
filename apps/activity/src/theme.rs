@@ -7,11 +7,11 @@ use crate::prefs;
 /// Install the stylesheet and the current palette, and follow Omarchy live.
 pub fn install() {
     nyx_theme::install(Style {
-        window_class: "tasks-window",
+        window_class: "activity-window",
         base_skip: &[],
         css: include_str!("style.css"),
         no_glow_css: "\n.settings-option.search-hit, .theme-card.selected, .toast, .stat-tile.selected { box-shadow: 0 0 0 1px alpha(@theme_accent, 0.6); }\n\
-             window.tasks-window scale > trough > slider { box-shadow: 0 0 0 1px alpha(@theme_accent, 0.72); }\n",
+             window.activity-window scale > trough > slider { box-shadow: 0 0 0 1px alpha(@theme_accent, 0.72); }\n",
         extra_colors: None,
         prefs: || {
             let p = prefs::get();

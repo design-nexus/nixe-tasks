@@ -1,4 +1,4 @@
-# Tasks
+# Activity
 
 A task manager for [Omarchy](https://omarchy.org). It takes its colors from your
 Omarchy theme and fits a half-screen tile.
@@ -37,7 +37,7 @@ Omarchy theme and fits a half-screen tile.
 - **Startup:** what runs at login.
   - Apps from XDG autostart can be turned off with a user override; the system file
     is never touched.
-  - Items you add are started by Hyprland from `~/.config/hypr/tasks.lua`.
+  - Items you add are started by Hyprland from `~/.config/hypr/activity.lua`.
   - Omarchy's own startup and your `autostart.lua` are shown for reference.
   - Also: user services, and what took longest at your last login.
 - **Services:** systemd user and system services and timers. Start, stop, restart,
@@ -56,7 +56,7 @@ all). <kbd>Ctrl</kbd>+<kbd>P</kbd> pauses updates, and <kbd>F1</kbd> lists every
 
 ### Easy on the battery
 
-On hybrid laptops the discrete GPU sleeps when nothing uses it. Tasks keeps it asleep:
+On hybrid laptops the discrete GPU sleeps when nothing uses it. Activity keeps it asleep:
 
 - It uses GTK's GL renderer, because the Vulkan renderer probes every GPU and wakes it.
 - It never runs `lspci`; GPU names come from `pci.ids`.
@@ -68,15 +68,15 @@ While the window is hidden, the per-process and GPU sampling stops too.
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/design-nexus/nyx-tasks/main/install.sh | bash -s -- tasks
+curl -fsSL https://raw.githubusercontent.com/design-nexus/nyx-activity/main/install.sh | bash -s -- activity
 ```
 
-This builds with Cargo and installs `nyx-tasks` to `~/.local/bin`, along with a launcher
+This builds with Cargo and installs `nyx-activity` to `~/.local/bin`, along with a launcher
 entry. Add `-s -- --bind` after `bash` to also print a binding that opens it with
 Ctrl+Shift+Esc:
 
 ```lua
-o.bind("CTRL + SHIFT + Escape", "Task manager", hl.dsp.exec_cmd("tasks --toggle"))
+o.bind("CTRL + SHIFT + Escape", "Task manager", hl.dsp.exec_cmd("nyx-activity --toggle"))
 ```
 
 To remove it, run the same line with `uninstall.sh` in place of `install.sh`. Add
@@ -85,7 +85,7 @@ To remove it, run the same line with `uninstall.sh` in place of `install.sh`. Ad
 ## Usage
 
 ```
-nyx-tasks [--section ID] [--toggle]
+nyx-activity [--section ID] [--toggle]
 ```
 
 `--section` opens (or switches the open window to) `overview`, `processes`, `cpu`,
@@ -95,10 +95,10 @@ nyx-tasks [--section ID] [--toggle]
 
 | Path | What |
 | --- | --- |
-| `~/.config/nyx-tasks/settings.toml` | This app's preferences |
-| `~/.config/nyx-tasks/themes/*.toml` | Your own themes |
-| `~/.config/nyx-tasks/state.json` | Startup items added in Tasks |
-| `~/.config/hypr/tasks.lua` | Generated from the above; loaded by `require("hypr.tasks")` |
+| `~/.config/nyx-activity/settings.toml` | This app's preferences |
+| `~/.config/nyx-activity/themes/*.toml` | Your own themes |
+| `~/.config/nyx-activity/state.json` | Startup items added in Activity |
+| `~/.config/hypr/activity.lua` | Generated from the above; loaded by `require("hypr.activity")` |
 | `~/.config/autostart/*.desktop` | XDG autostart overrides (`Hidden=true`) |
 
 ## License

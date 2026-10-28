@@ -32,11 +32,11 @@ fn gpu_section(body: &gtk::Box, g: &Gpu) {
 
     // Honest state card for a GPU we deliberately don't poll.
     let asleep_desc = if g.vendor == Vendor::Nvidia {
-        "It's powered down to save battery. Asking it for statistics would wake it, so Tasks waits until an app starts using it."
+        "It's powered down to save battery. Asking it for statistics would wake it, so Activity waits until an app starts using it."
     } else {
         "It's powered down to save energy."
     };
-    let idle_desc = "Awake but unused. Tasks doesn't poll it now, so it can go back to sleep.";
+    let idle_desc = "Awake but unused. Activity doesn't poll it now, so it can go back to sleep.";
     let sleep_row = widgets::row("Asleep", asleep_desc, None);
     list.append(&sleep_row);
 

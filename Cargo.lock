@@ -473,19 +473,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nyx-core"
-version = "0.1.0"
-source = "git+https://github.com/design-nexus/nyx-core.git?rev=52cba5e27a3dd5f00c780f53e423302b4b5f9c9c#52cba5e27a3dd5f00c780f53e423302b4b5f9c9c"
-dependencies = [
- "anyhow",
- "gtk4",
- "serde",
- "serde_json",
- "toml",
-]
-
-[[package]]
-name = "nyx-tasks"
+name = "nyx-activity"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -495,6 +483,18 @@ dependencies = [
  "nyx-core",
  "nyx-theme",
  "nyx-ui",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
+name = "nyx-core"
+version = "0.1.0"
+source = "git+https://github.com/design-nexus/nyx-core.git?rev=52cba5e27a3dd5f00c780f53e423302b4b5f9c9c#52cba5e27a3dd5f00c780f53e423302b4b5f9c9c"
+dependencies = [
+ "anyhow",
+ "gtk4",
  "serde",
  "serde_json",
  "toml",
