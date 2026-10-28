@@ -661,7 +661,7 @@ pub fn build(page: &Page) {
     search.set_placeholder_text(Some("Filter by name or description"));
     search.set_hexpand(true);
     let count = widgets::label("", "dim");
-    count.add_css_class("mono");
+    count.add_css_class("tnum");
     row.append(&search);
     row.append(&count);
     let refresh = gtk::Button::from_icon_name("view-refresh-symbolic");

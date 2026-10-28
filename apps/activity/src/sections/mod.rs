@@ -175,7 +175,7 @@ pub fn all() -> Vec<Section> {
             icon: "preferences-system-symbolic",
             group: "App",
             description: "How this window looks and how often it samples.",
-            keywords: "theme colours colors follow omarchy glow motion interval history bits bytes temperature celsius fahrenheit units",
+            keywords: "theme colours colors follow omarchy accent motion interval history bits bytes temperature celsius fahrenheit units",
             files: || vec![paths::prefs_file()],
             build: settings::build,
             readout: None,

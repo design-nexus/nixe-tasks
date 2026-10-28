@@ -92,7 +92,10 @@ fn main() -> glib::ExitCode {
         unsafe { std::env::set_var("GSK_RENDERER", "ngl") };
     }
 
-    let app = gtk::Application::builder().application_id(APP_ID).flags(gio::ApplicationFlags::HANDLES_COMMAND_LINE).build();
+    // Developer aid: a different id gives a separate instance (a test copy on a virtual
+    // monitor), so it doesn't hand its arguments to the copy that's open.
+    let id = std::env::var("NYX_ACTIVITY_APP_ID").unwrap_or_else(|_| APP_ID.to_string());
+    let app = gtk::Application::builder().application_id(id).flags(gio::ApplicationFlags::HANDLES_COMMAND_LINE).build();
     // Notifications open the page they're about.
     let show = gio::SimpleAction::new("show", Some(glib::VariantTy::STRING));
     let a = app.clone();

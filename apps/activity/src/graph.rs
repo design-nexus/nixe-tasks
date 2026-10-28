@@ -267,7 +267,7 @@ pub fn graph(series: Vec<Series>, scale: Scale, fmt: fn(f64) -> String, height: 
             item.append(&widgets::label(&s.label, "legend-label"));
         }
         let v = widgets::label("–", "legend-value");
-        v.add_css_class("mono");
+        v.add_css_class("tnum");
         item.append(&v);
         values.push(v);
         legend.append(&item);
@@ -285,13 +285,13 @@ pub fn graph(series: Vec<Series>, scale: Scale, fmt: fn(f64) -> String, height: 
     overlay.add_css_class("graph-plot");
     overlay.set_child(Some(&area));
     let max_label = widgets::label("", "graph-axis");
-    max_label.add_css_class("mono");
+    max_label.add_css_class("tnum");
     max_label.set_halign(gtk::Align::Start);
     max_label.set_valign(gtk::Align::Start);
     max_label.set_can_target(false);
     overlay.add_overlay(&max_label);
     let tip = widgets::label("", "graph-tip");
-    tip.add_css_class("mono");
+    tip.add_css_class("tnum");
     tip.set_halign(gtk::Align::Start);
     tip.set_valign(gtk::Align::Start);
     tip.set_visible(false);

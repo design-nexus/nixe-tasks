@@ -1,9 +1,11 @@
 # Activity — notes for working on this repo
 
-- GTK4 (gtk4-rs 0.11) + Rust. No libadwaita. The window is one flat, monospace surface
-  split by hairlines (see `STYLE.md`): the sidebar (its head holds the toggle and
-  search), the page and a status bar (`F1 Shortcuts`, processes/CPU/memory, the
-  live/paused pill, the page's config file, settings). Pages have no title header. Settings
+- GTK4 (gtk4-rs 0.11) + Rust. No libadwaita. Nyx Design 2.0 (`use_design_2`, see
+  `STYLE.md`): one surface, no hairlines; cards and spacing separate the parts. The
+  unified header (`chrome::app_header`) has the app with the page as its subtitle and the
+  sidebar toggle; processes/CPU/memory, the live/paused pill, the page's config file,
+  search and Settings at the end. No status bar, no sidebar head. Numbers use tabular
+  figures (`tnum`); mono is for commands and paths only. Pages have no title header. Settings
   is a card over the window (`settings_dialog.rs`) listing the settings page's groups;
   `navigate("settings")` opens it. Ctrl+F filters processes, or opens Go to elsewhere.
   The theme, widgets, settings card and window frame come from the `nyx-*` crates.
@@ -27,7 +29,8 @@
 - Hyprland dispatch: `hyprctl eval 'hl.dispatch(hl.dsp.focus({ window = "address:0x…" }))'`
   (and `hl.dsp.window.close`).
 - `nyx-activity --top cpu|memory` prints the busiest processes and the totals as JSON from two samples (Nyx Assistant's `tasks.top`); no window.
-- Checks: `cargo clippy -- -D warnings`, `cargo test`. Visual check:
-  `ACTIVITY_SNAPSHOT=/tmp/x.png [ACTIVITY_SNAPSHOT_PAGE=1] nyx-activity --section cpu`
-  (quit any running instance first; it's single-instance). A scratch
-  `XDG_CONFIG_HOME` with `theme = "catppuccin-latte"`, `mode = "theme"` checks light mode.
+- Checks: `cargo clippy -- -D warnings`, `cargo test`. Visual check: a test copy on a
+  private virtual monitor, `NYX_ACTIVITY_APP_ID=io.github.design_nexus.nyx.ActivityTest
+  nyx-activity --section cpu` with scratch XDG dirs (a separate instance, so the open copy
+  is untouched). A scratch `XDG_CONFIG_HOME` with `theme = "catppuccin-latte"`,
+  `mode = "theme"` checks light mode.

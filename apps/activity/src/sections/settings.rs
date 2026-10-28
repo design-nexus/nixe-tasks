@@ -75,11 +75,7 @@ pub fn build(page: &Page) {
     });
     g.add(&widgets::row("Current colors", "", Some(swatches.upcast_ref())));
 
-    let (r, _) = widgets::switch_row("Glow", "Soft accent glow around focused and selected elements.", p.glow, |on| {
-        prefs::update(|p| p.glow = on);
-        theme::apply();
-    });
-    g.add(&r);
+    g.add(&nyx_ui::widgets::accent_row("activity"));
     let (r, _) =
         widgets::switch_row("Reduce motion", "Turn off transitions and animations in this window.", p.reduce_motion, |on| {
             prefs::update(|p| p.reduce_motion = on);

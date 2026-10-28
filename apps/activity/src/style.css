@@ -1,3 +1,72 @@
+/* Activity on Nyx 2.0: only Activity's own parts. One surface: the header, the
+   sidebar, toolbars, tables and cards share the window's background; cards and
+   spacing, not lines, separate them. Buttons, chips, inputs, switches, level bars,
+   list rows, table headers and banners come from the shared sheets. */
+
+/* ---------- Header ---------- */
+
+.header-status {
+  font-size: 11.5px;
+  color: @theme_dim_text;
+  font-feature-settings: "tnum";
+}
+
+window.activity-window .app-header button.bar-button,
+window.activity-window .app-header menubutton.bar-button > button {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: var(--nyx-radius-small);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: @theme_dim_text;
+}
+
+window.activity-window .app-header button.bar-button:hover,
+window.activity-window .app-header menubutton.bar-button > button:hover {
+  background: @row_hover;
+  color: @theme_text;
+}
+
+/* Live or paused: a quiet chip; paused takes the danger tint. */
+window.activity-window button.live-pill {
+  min-height: 26px;
+  padding: 0 10px;
+  margin-right: 4px;
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: @theme_dim_text;
+  font-feature-settings: "tnum";
+}
+
+window.activity-window button.live-pill:hover {
+  background: @row_hover;
+  color: @theme_text;
+}
+
+window.activity-window button.live-pill.paused {
+  background: alpha(@theme_danger, 0.12);
+  color: @theme_danger;
+}
+
+/* The sidebar's group labels in px: in em they can resolve to nothing here. */
+.settings-navigation .nav-group {
+  font-size: 11px;
+}
+
+.settings-navigation.compact .nav-group {
+  font-size: 0;
+}
+
+/* Numbers that line up. */
+.tnum {
+  font-feature-settings: "tnum";
+}
+
+/* ---------- Page headings ---------- */
+
 /* A page's first heading (marked by the window) sits right under the top
  * padding, so the space above it matches the space below it. */
 .group-title.page-first,
@@ -6,7 +75,7 @@
 }
 
 .group-head {
-  margin: 26px 2px 12px;
+  margin: 24px 2px 10px;
 }
 
 /* A button in a heading row doesn't make the row taller than the heading. */
@@ -31,9 +100,8 @@ window.activity-window button.group-action {
 }
 
 .priority-custom {
-  margin-top: 6px;
+  margin-top: 10px;
   padding: 6px 4px 2px;
-  border-top: 1px solid @hairline;
 }
 
 .loading {
@@ -45,78 +113,27 @@ label.warning-text,
   color: @theme_danger;
 }
 
-/* ---------- Buttons ---------- */
-
-window.activity-window button {
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 6px;
-  background: transparent;
-  border: 1px solid @hairline;
-  box-shadow: none;
-  color: @theme_text;
-  transition: background 150ms ease-out, border-color 150ms ease-out;
-}
-
-window.activity-window button:hover {
-  background: @row_hover;
-}
-
-window.activity-window button:active {
-  background: alpha(@theme_accent, 0.22);
-}
-
-window.activity-window button.suggested-action {
-  background: @nav_active;
-  border-color: transparent;
-  color: @theme_text;
-  font-weight: 600;
-}
-
-window.activity-window button.suggested-action:hover {
-  background: mix(@theme_bg, @theme_accent, 0.26);
-}
-
-window.activity-window button.destructive-action {
-  background: alpha(@theme_danger, 0.12);
-  border-color: alpha(@theme_danger, 0.55);
-  color: @theme_danger;
-}
-
-window.activity-window button.flat {
-  background: transparent;
-  border-color: transparent;
-}
-
-window.activity-window button.flat:hover {
-  background: @row_hover;
-}
+/* ---------- Controls ---------- */
 
 window.activity-window button.reset-button {
   min-height: 26px;
   min-width: 26px;
   padding: 0;
-  border-radius: 999px;
+  border-radius: var(--nyx-radius-small);
+  background: transparent;
   color: @theme_dim_text;
 }
 
 window.activity-window button.chip {
   min-height: 28px;
   padding: 0 12px;
-  border-radius: 6px;
-  font-size: 0.9em;
+  font-size: 12.5px;
 }
 
 window.activity-window button.chip.small {
-  min-height: 22px;
+  min-height: 24px;
   padding: 0 9px;
-  font-size: 0.82em;
-}
-
-window.activity-window button.chip.selected {
-  background: @nav_active;
-  border-color: transparent;
-  color: @theme_text;
+  font-size: 12px;
 }
 
 window.activity-window dropdown > button {
@@ -124,94 +141,67 @@ window.activity-window dropdown > button {
 }
 
 .theme-card.selected {
-  border-color: @theme_accent;
-  box-shadow: 0 0 0 1px alpha(@theme_accent, 0.72), 0 0 14px alpha(@theme_glow, 0.24);
-}
-
-/* Buttons on a banner are its action: a solid accent, so they stand out on the tint. */
-window.activity-window .banner button {
-  background: @theme_accent;
-  border-color: @theme_accent;
-  color: @theme_on_accent;
-  font-weight: 600;
-}
-
-window.activity-window .banner button:hover {
-  background: mix(@theme_accent, @theme_text, 0.12);
-}
-
-window.activity-window .banner.warning button {
-  background: @theme_danger;
-  border-color: @theme_danger;
-}
-
-window.activity-window .banner.warning button:hover {
-  background: mix(@theme_danger, @theme_text, 0.12);
-}
-
-window.activity-window button.live-pill {
-  min-height: 22px;
-  padding: 0 8px;
-  border-color: transparent;
-  font-size: 1em;
-  font-weight: 500;
-  color: @theme_dim_text;
-}
-
-window.activity-window button.live-pill.paused {
-  background: alpha(@theme_danger, 0.12);
-  color: @theme_danger;
+  box-shadow: 0 0 0 1px alpha(@theme_accent, 0.6);
 }
 
 /* ---------- Stat tiles ---------- */
 
+.group-list.bare {
+  background: transparent;
+}
+
+.group-list.bare flowboxchild {
+  padding: 0;
+}
+
 window.activity-window button.stat-tile {
   padding: 12px 14px 10px;
-  border-radius: 8px;
-  background: mix(@theme_bg, @theme_muted, 0.25);
-  border: 1px solid @hairline;
+  border: none;
+  border-radius: var(--nyx-radius-card);
+  background: @theme_card;
+  box-shadow: none;
   min-width: 150px;
+  transition: background 120ms ease-out;
 }
 
 window.activity-window button.stat-tile:hover {
-  background: mix(@theme_bg, @theme_muted, 0.32);
-  border-color: alpha(@theme_accent, 0.55);
+  background: mix(@theme_card, @theme_text, 0.04);
 }
 
 .stat-title {
-  font-size: 0.76em;
-  font-weight: 800;
-  letter-spacing: 1.6px;
-  color: @theme_dim_text;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: @theme_text_tertiary;
 }
 
 .stat-value {
-  font-size: 1.5em;
-  font-weight: 800;
+  font-size: 22px;
+  font-weight: 600;
   color: @theme_text;
 }
 
 .stat-sub {
-  font-size: 0.82em;
+  font-size: 12px;
   color: @theme_dim_text;
 }
 
 /* ---------- Graphs ---------- */
 
 .graph-card {
-  background: mix(@theme_bg, @theme_muted, 0.25);
-  border: 1px solid @hairline;
-  border-radius: 6px;
+  background: @theme_card;
+  border: none;
+  border-radius: var(--nyx-radius-card);
   padding: 14px 16px;
 }
 
 .graph-card-title {
-  font-weight: 700;
+  font-weight: 600;
   color: @theme_text;
 }
 
 .graph-legend {
-  font-size: 0.86em;
+  font-size: 12px;
 }
 
 .legend-label {
@@ -220,7 +210,7 @@ window.activity-window button.stat-tile:hover {
 
 .legend-value {
   color: @theme_text;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .legend-swatch {
@@ -240,107 +230,85 @@ window.activity-window button.stat-tile:hover {
 }
 
 .graph-plot {
-  background: alpha(@theme_bg, 0.35);
-  border-radius: 4px;
+  background: @field;
+  border-radius: var(--nyx-radius-small);
 }
 
 .graph-axis {
-  font-size: 0.72em;
-  color: @theme_dim_text;
+  font-size: 11px;
+  color: @theme_text_tertiary;
 }
 
 .graph-plot .graph-axis {
   margin: 3px 6px;
-  color: alpha(@theme_dim_text, 0.9);
 }
 
 .graph-tip {
-  font-size: 0.8em;
+  font-size: 12px;
   padding: 5px 9px;
-  border-radius: 6px;
-  background: @theme_surface;
-  border: 1px solid alpha(@theme_border, 0.8);
-  box-shadow: 0 4px 16px alpha(@theme_shadow, 0.5);
+  border-radius: var(--nyx-radius-small);
+  background: @theme_popover;
+  box-shadow: 0 6px 20px alpha(@theme_shadow, 0.45);
   color: @theme_text;
 }
 
+/* Each thread: small cards, as graphs or as a heat grid. */
 .core-cell {
-  background: mix(@theme_bg, @theme_surface, 0.5);
-  border: 1px solid alpha(@theme_border, 0.45);
-  border-radius: 6px;
+  background: @theme_card;
+  border-radius: var(--nyx-radius-small);
   padding: 6px 8px 4px;
   min-width: 96px;
 }
 
 .core-cell .core-name {
-  font-size: 0.74em;
-  font-weight: 700;
-  color: @theme_dim_text;
+  font-size: 11px;
+  font-weight: 600;
+  color: @theme_text_tertiary;
 }
 
 .core-cell .core-value {
-  font-size: 0.8em;
+  font-size: 12px;
   color: @theme_text;
 }
 
 .core-tile {
-  background: mix(@theme_bg, @theme_surface, 0.5);
-  border: 1px solid alpha(@theme_border, 0.45);
-  border-radius: 6px;
+  background: @theme_card;
+  border-radius: var(--nyx-radius-small);
   padding: 6px 8px;
   min-width: 58px;
 }
 
-.core-tile .core-value { font-size: 0.95em; font-weight: 700; }
+.core-tile .core-value { font-size: 13px; font-weight: 600; }
 
-.core-tile.heat-1 { background: mix(@theme_bg, @theme_accent, 0.08); }
+.core-tile.heat-1 { background: mix(@theme_card, @theme_accent, 0.08); }
 
-.core-tile.heat-2 { background: mix(@theme_bg, @theme_accent, 0.16); }
+.core-tile.heat-2 { background: mix(@theme_card, @theme_accent, 0.16); }
 
-.core-tile.heat-3 { background: mix(@theme_bg, @theme_accent, 0.26); }
+.core-tile.heat-3 { background: mix(@theme_card, @theme_accent, 0.26); }
 
-.core-tile.heat-4 { background: mix(@theme_bg, @theme_accent, 0.38); }
+.core-tile.heat-4 { background: mix(@theme_card, @theme_accent, 0.38); }
 
-.core-tile.heat-5 { background: mix(@theme_bg, @theme_accent, 0.52); }
+.core-tile.heat-5 { background: mix(@theme_card, @theme_accent, 0.52); }
 
 /* ---------- Key figures ---------- */
 
 .kv-key {
-  font-size: 0.78em;
-  font-weight: 700;
+  font-size: 11.5px;
   color: @theme_dim_text;
 }
 
-.kv-value {
-  font-size: 1.05em;
-  font-weight: 700;
+/* The shared figure is mono; here it's the UI font with tabular figures. */
+window.activity-window label.kv-value.mono {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
   color: @theme_text;
+  font-feature-settings: "tnum";
 }
 
 /* ---------- Usage bars ---------- */
 
-window.activity-window levelbar > trough {
-  min-height: 6px;
-  border-radius: 999px;
-  background: alpha(@theme_muted, 0.8);
-  border: none;
-  padding: 0;
-}
-
-window.activity-window levelbar > trough > block {
-  min-height: 6px;
-  border-radius: 999px;
-  border: none;
-}
-
-window.activity-window levelbar > trough > block.filled {
-  background: @theme_accent;
-}
-
-window.activity-window levelbar > trough > block.filled.hot {
-  background: @theme_danger;
-}
-
+window.activity-window levelbar > trough > block.filled.hot,
 window.activity-window levelbar.warn > trough > block.filled {
   background: @theme_danger;
 }
@@ -352,16 +320,16 @@ window.activity-window levelbar > trough > block.empty {
 /* Memory composition bar: used / cached / free. */
 
 .composition {
-  min-height: 10px;
+  min-height: 8px;
   border-radius: 999px;
-  background: alpha(@theme_muted, 0.8);
+  background: @track;
 }
 
 .legend-key {
   min-width: 10px;
   min-height: 10px;
   border-radius: 3px;
-  background: alpha(@theme_muted, 0.8);
+  background: @track;
 }
 
 .legend-key.part-used { background: @theme_accent; }
@@ -372,9 +340,25 @@ window.activity-window levelbar > trough > block.empty {
 
 .composition .part-cached { background: alpha(@theme_accent, 0.4); }
 
+/* ---------- Toolbars and tables ---------- */
+
+/* A page's toolbar, above its table. */
+.toolbar {
+  min-height: 44px;
+  margin: 0;
+  padding: 0 16px 0 20px;
+  background: transparent;
+}
+
+/* Toolbar controls sit centred in the row instead of stretching to it. */
+.toolbar > * {
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+
 /* A toolbar of two rows (filters over the search) keeps even space around both. */
 .toolbar.stacked {
-  padding: 10px 12px 10px 14px;
+  padding: 10px 16px 10px 20px;
 }
 
 .toolbar.stacked > * {
@@ -386,48 +370,31 @@ window.activity-window levelbar > trough > block.empty {
   padding: 0;
 }
 
-/* A page's toolbar sits on a hairline above its table. */
-
-.toolbar {
-  min-height: 46px;
-  margin: 0;
-  padding: 0 12px 0 14px;
-  background: transparent;
-  border-bottom: 1px solid @hairline;
-}
-
 window.activity-window columnview > header > button {
-  min-height: 34px;
+  min-height: 32px;
   padding: 0 16px;
-  border-radius: 0;
   border: none;
-  border-left: 1px solid @hairline;
+  border-radius: 0;
   background: transparent;
-  color: @theme_dim_text;
 }
 
-window.activity-window columnview > header > button,
 window.activity-window columnview > header > button > box > label {
-  font-size: 1em;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: @theme_text_tertiary;
+  font-feature-settings: "tnum";
 }
 
-window.activity-window columnview > header > button:hover {
-  background: @row_hover;
+window.activity-window columnview > header > button:hover > box > label {
   color: @theme_text;
 }
 
-.cell-num {
-  font-family: "JetBrains Mono", "JetBrainsMono Nerd Font", monospace;
-  font-feature-settings: "tnum";
-  font-size: 0.92em;
-}
-
 /* Busy cells get a stronger accent wash, five steps. */
-
 .cell-num {
   padding: 1px 5px;
   border-radius: 4px;
+  font-feature-settings: "tnum";
 }
 
 .cell-num.heat-1 { background: alpha(@theme_accent, 0.07); }
@@ -436,9 +403,9 @@ window.activity-window columnview > header > button:hover {
 
 .cell-num.heat-3 { background: alpha(@theme_accent, 0.2); }
 
-.cell-num.heat-4 { background: alpha(@theme_accent, 0.28); font-weight: 700; }
+.cell-num.heat-4 { background: alpha(@theme_accent, 0.28); font-weight: 600; }
 
-.cell-num.heat-5 { background: alpha(@theme_accent, 0.38); font-weight: 700; color: @theme_text; }
+.cell-num.heat-5 { background: alpha(@theme_accent, 0.38); font-weight: 600; color: @theme_text; }
 
 .cell-dim {
   color: @theme_dim_text;
@@ -464,6 +431,7 @@ window.activity-window button.tree-expander:hover {
   background: @row_hover;
 }
 
+/* The selected process's details: a card under the table, or beside it. */
 .details-panel.docked {
   margin-top: 0;
   margin-left: 10px;
@@ -471,15 +439,15 @@ window.activity-window button.tree-expander:hover {
 
 .details-panel {
   margin-top: 10px;
-  background: mix(@theme_bg, @theme_muted, 0.25);
-  border: 1px solid @hairline;
-  border-radius: 6px;
+  background: @theme_card;
+  border: none;
+  border-radius: var(--nyx-radius-card);
   padding: 12px 16px;
 }
 
 .details-title {
-  font-size: 1.1em;
-  font-weight: 800;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 window.activity-window list.service-list,
@@ -494,89 +462,10 @@ window.activity-window list.service-list > row {
 }
 
 window.activity-window list.table-card > row {
-  border-radius: 0;
+  border-radius: var(--nyx-radius-small);
   margin: 0;
 }
 
 window.activity-window list.table-card > row:hover {
   background: @row_hover;
-}
-
-window.activity-window list.table-card > row:selected {
-  background: @nav_active;
-  box-shadow: none;
-}
-
-window.activity-window button.bar-button {
-  min-width: 30px;
-  min-height: 30px;
-  padding: 0;
-  border-radius: 6px;
-  border-color: transparent;
-  background: transparent;
-  color: @theme_dim_text;
-}
-
-window.activity-window button.bar-button:hover {
-  background: @row_hover;
-  color: @theme_text;
-}
-
-/* A config-file menu in the top bar looks like the other bar buttons. */
-window.activity-window menubutton.bar-button > button {
-  min-width: 30px;
-  min-height: 30px;
-  padding: 0;
-  border-radius: 6px;
-  border-color: transparent;
-  background: transparent;
-  color: @theme_dim_text;
-}
-
-window.activity-window menubutton.bar-button > button:hover {
-  background: @row_hover;
-  color: @theme_text;
-}
-
-window.activity-window button.status-help {
-  min-height: 24px;
-  padding: 0 6px;
-  border: none;
-  background: transparent;
-  color: @theme_dim_text;
-  font-weight: 500;
-}
-
-window.activity-window button.status-help:hover {
-  color: @theme_text;
-}
-
-/* Toolbar controls sit centred in the row instead of stretching to it. */
-
-.toolbar > *,
-.list-toolbar > * {
-  margin-top: 7px;
-  margin-bottom: 7px;
-}
-
-window.activity-window columnview > header,
-window.activity-window columnview > header > button,
-window.activity-window columnview > header > button > box {
-  font-size: 1em;
-}
-
-window.activity-window button.dialog-nav {
-  min-height: 0;
-  padding: 10px 14px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-}
-
-window.activity-window button.dialog-nav:hover {
-  background: @row_hover;
-}
-
-window.activity-window button.dialog-nav.active {
-  background: @lift_active;
 }

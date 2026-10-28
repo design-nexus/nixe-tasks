@@ -22,7 +22,6 @@ fn mount_row(path: &str) -> (gtk::Box, gtk::LevelBar, gtk::Label) {
     row.add_css_class("settings-option");
     let head = widgets::hbox(10);
     let p = widgets::label(path, "settings-option-title");
-    p.add_css_class("mono");
     p.set_hexpand(true);
     p.set_ellipsize(pango::EllipsizeMode::Middle);
     let open = gtk::Button::from_icon_name("folder-open-symbolic");
@@ -31,7 +30,7 @@ fn mount_row(path: &str) -> (gtk::Box, gtk::LevelBar, gtk::Label) {
     let target = path.to_string();
     open.connect_clicked(move |_| cmd::spawn(&["xdg-open", &target]));
     let detail = widgets::label("", "dim");
-    detail.add_css_class("mono");
+    detail.add_css_class("tnum");
     head.append(&p);
     head.append(&detail);
     head.append(&open);

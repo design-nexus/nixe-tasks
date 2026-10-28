@@ -128,7 +128,7 @@ pub fn graph_card(title: &str, graph: &impl IsA<gtk::Widget>) -> (gtk::Box, gtk:
     t.set_hexpand(true);
     t.set_ellipsize(pango::EllipsizeMode::End);
     let summary = label("", "dim");
-    summary.add_css_class("mono");
+    summary.add_css_class("tnum");
     summary.set_xalign(1.0);
     head.append(&t);
     head.append(&summary);

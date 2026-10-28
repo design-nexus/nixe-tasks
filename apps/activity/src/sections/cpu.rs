@@ -94,7 +94,7 @@ pub fn build(page: &Page) {
         cell.add_css_class(if grid { "core-tile" } else { "core-cell" });
         let name = widgets::label(&format!("CPU {i}"), "core-name");
         let value = widgets::label("", "core-value");
-        value.add_css_class("mono");
+        value.add_css_class("tnum");
         if grid {
             cell.append(&name);
             cell.append(&value);

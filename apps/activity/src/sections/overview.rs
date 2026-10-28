@@ -31,7 +31,7 @@ fn tile(title: &str, target: &'static str, spark: gtk::DrawingArea) -> Tile {
     let v = widgets::vbox(2);
     v.append(&widgets::label(&title.to_uppercase(), "stat-title"));
     let value = widgets::label("–", "stat-value");
-    value.add_css_class("mono");
+    value.add_css_class("tnum");
     v.append(&value);
     let sub = widgets::label("", "stat-sub");
     sub.set_ellipsize(pango::EllipsizeMode::End);
@@ -282,6 +282,8 @@ fn fill_top(list: &TopList, procs: &[&Proc]) {
 
 pub fn build(page: &Page) {
     let g = page.group("Usage");
+    // The tiles are cards themselves, straight on the page.
+    g.list.add_css_class("bare");
     let flow = gtk::FlowBox::new();
     flow.set_selection_mode(gtk::SelectionMode::None);
     flow.set_homogeneous(true);

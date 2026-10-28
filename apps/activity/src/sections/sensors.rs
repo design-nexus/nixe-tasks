@@ -88,7 +88,7 @@ pub fn build(page: &Page) {
                 n.set_ellipsize(gtk::pango::EllipsizeMode::End);
                 n.set_tooltip_text(Some(&format!("{} · {}", t.chip, t.label)));
                 let v = widgets::label("", "core-value");
-                v.add_css_class("mono");
+                v.add_css_class("tnum");
                 head.append(&n);
                 head.append(&v);
                 cell.append(&head);

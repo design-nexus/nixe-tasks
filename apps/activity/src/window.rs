@@ -1,7 +1,7 @@
-//! The main window: a top bar (sidebar toggle, where you are, search,
-//! settings, close), the navigation sidebar, a stack of section pages built the
-//! first time they're shown, and a status bar. Settings opens as a dialog over
-//! the window (see `settings_dialog`).
+//! The main window: the header (the app and the page, the sidebar toggle; what's
+//! running, the live/paused pill, the page's config files, search and settings at the
+//! end), the navigation sidebar and a stack of section pages built the first time
+//! they're shown. Settings opens as a dialog over the window (see `settings_dialog`).
 
 use crate::sections::{self, Section};
 use crate::widgets;
@@ -26,6 +26,9 @@ struct Ui {
     overlay: gtk::Overlay,
     /// Holds the current page's "open the config file" button.
     edit: gtk::Box,
+    header: chrome::AppHeader,
+    /// Processes, CPU and memory, at the header's end.
+    readout: gtk::Label,
 }
 
 thread_local! {
@@ -51,12 +54,6 @@ pub fn present(app: &gtk::Application, section: Option<&str>) {
     crate::alerts::start();
     build(app);
     navigate(section.unwrap_or("overview"));
-    // Developer aid: ACTIVITY_SNAPSHOT=/path.png renders the window to a PNG
-    // (invisibly) and quits, so layouts can be checked without a visible window.
-    if let Some(out) = std::env::var_os("ACTIVITY_SNAPSHOT") {
-        snapshot_and_quit(app, std::path::PathBuf::from(out));
-        return;
-    }
     if let Some(ui) = ui() {
         ui.borrow().window.present();
     }
@@ -85,7 +82,7 @@ fn install_icons() {
 
 fn build(app: &gtk::Application) {
     let window =
-        gtk::ApplicationWindow::builder().application(app).title("Activity").default_width(1120).default_height(800).build();
+        gtk::ApplicationWindow::builder().application(app).title("Activity").default_width(1280).default_height(800).build();
     window.add_css_class("activity-window");
     // No client-side titlebar: Hyprland manages the window.
     window.set_titlebar(Some(&gtk::Box::new(gtk::Orientation::Horizontal, 0)));
@@ -125,7 +122,7 @@ fn build(app: &gtk::Application) {
         content.append(&l);
         if let Some(readout) = s.readout {
             let r = widgets::label("", "nav-readout");
-            r.add_css_class("mono");
+            r.add_css_class("tnum");
             // A long reading ("↓ 12.3 MiB/s") mustn't widen the sidebar.
             r.set_max_width_chars(11);
             r.set_ellipsize(gtk::pango::EllipsizeMode::End);
@@ -148,12 +145,6 @@ fn build(app: &gtk::Application) {
         .vexpand(true)
         .child(&list)
         .build();
-    let head = chrome::sidebar_head("Activity", Some("Filter processes, or go to anything (Ctrl+F)"));
-    head.toggle.connect_clicked(|_| toggle_sidebar());
-    if let Some(find_button) = &head.search {
-        find_button.connect_clicked(|_| find());
-    }
-    nav.append(&head.root);
     nav.append(&nav_scroll);
 
     // ----- Content -----
@@ -168,12 +159,29 @@ fn build(app: &gtk::Application) {
     body.append(&nav);
     body.append(&stack);
 
-    // The page's config files, beside the settings gear.
+    // ----- Header -----
+    // The app and the page, the sidebar toggle; what's running, the live/paused pill,
+    // the page's config files, search and Settings at the end.
+    let header = chrome::app_header(&window, "utilities-system-monitor-symbolic", "Activity");
+    let collapse = widgets::bar_button("sidebar-show-symbolic", "Collapse the sidebar (Ctrl+B)");
+    collapse.connect_clicked(|_| toggle_sidebar());
+    header.start.append(&collapse);
+    header.end.set_spacing(4);
+    let readout = header_readout();
+    header.end.append(&readout);
+    header.end.append(&pause_button());
+    // The page's config files, beside search and settings.
     let edit = widgets::hbox(0);
+    header.end.append(&edit);
+    let search = widgets::bar_button("system-search-symbolic", "Filter processes, or go to anything (Ctrl+F)");
+    search.connect_clicked(|_| find());
+    header.end.append(&search);
+    header.end.append(&chrome::settings_button(settings_dialog::open));
+
     let frame = gtk::Box::new(gtk::Orientation::Vertical, 0);
     frame.add_css_class("window-frame");
+    frame.append(&header.root);
     frame.append(&body);
-    frame.append(&status_bar(&edit));
 
     let overlay = gtk::Overlay::new();
     overlay.set_child(Some(&frame));
@@ -306,6 +314,8 @@ fn build(app: &gtk::Application) {
         toast_timer: None,
         overlay,
         edit,
+        header,
+        readout,
     };
     UI.with(|u| *u.borrow_mut() = Some(Rc::new(RefCell::new(ui))));
 }
@@ -331,27 +341,11 @@ fn find() {
     }
 }
 
-/// The bar along the bottom: the shortcuts on the left; processes, CPU and
-/// memory, and the live/paused switch on the right.
-fn status_bar(edit: &gtk::Box) -> gtk::Box {
-    let bar = widgets::hbox(16);
-    bar.add_css_class("status-bar");
-    let help = gtk::Button::new();
-    help.add_css_class("status-help");
-    let content = widgets::hbox(10);
-    content.append(&widgets::label("F1", "status-key"));
-    content.append(&widgets::label("Shortcuts", ""));
-    help.set_child(Some(&content));
-    help.set_tooltip_text(Some("Show the keyboard shortcuts"));
-    help.connect_clicked(|_| show_shortcuts());
-    bar.append(&help);
-    let spacer = widgets::hbox(0);
-    spacer.set_hexpand(true);
-    bar.append(&spacer);
-    let readout = widgets::label("", "status-readout");
+/// Processes, CPU and memory, kept current.
+fn header_readout() -> gtk::Label {
+    let readout = widgets::label("", "header-status");
     readout.set_ellipsize(gtk::pango::EllipsizeMode::Start);
-    bar.append(&readout);
-    bar.append(&pause_button());
+    readout.set_margin_end(6);
     let r = readout.clone();
     live::on_tick(&readout, move |snap| {
         let mut parts = Vec::new();
@@ -364,9 +358,7 @@ fn status_bar(edit: &gtk::Box) -> gtk::Box {
         }
         r.set_text(&parts.join(" · "));
     });
-    bar.append(edit);
-    bar.append(&chrome::gear(settings_dialog::open));
-    bar
+    readout
 }
 
 /// Every keyboard shortcut, for the shortcuts dialog and Settings.
@@ -440,9 +432,6 @@ fn apply_compact(compact: bool) {
         for w in &s.hide {
             w.set_visible(!compact);
         }
-        if let Some(head) = s.nav.first_child().and_downcast::<gtk::Box>() {
-            chrome::set_head_compact(&head, compact);
-        }
         centre_icons(s.nav.upcast_ref(), compact);
     });
 }
@@ -465,12 +454,16 @@ pub fn toggle_sidebar() {
     apply_compact(NARROW.with(|n| n.get()) || prefs::get().sidebar_collapsed);
 }
 
+/// Narrow windows (a tiled half-screen) mark their pages, and get no readout in the
+/// header.
 fn set_narrow(narrow: bool) {
     NARROW.with(|n| n.set(narrow));
     let Some(ui) = ui() else { return };
-    for page in ui.borrow().pages.values() {
+    let u = ui.borrow();
+    for page in u.pages.values() {
         mark_page(page, narrow);
     }
+    u.readout.set_visible(!narrow);
 }
 
 fn mark_page(page: &gtk::ScrolledWindow, narrow: bool) {
@@ -583,6 +576,7 @@ pub fn navigate(id: &str) {
     u.current = id;
     if let Some(s) = u.sections.iter().find(|s| s.id == id) {
         chrome::set_title(&u.window, "Activity", s.title);
+        u.header.set_subtitle(s.title);
         while let Some(c) = u.edit.first_child() {
             u.edit.remove(&c);
         }
@@ -643,7 +637,7 @@ thread_local! {
     static PAUSE_BUTTONS: RefCell<Vec<gtk::Button>> = const { RefCell::new(Vec::new()) };
 }
 
-/// The live/paused pill in the status bar.
+/// The live/paused pill in the header.
 fn pause_button() -> gtk::Button {
     let b = gtk::Button::new();
     b.add_css_class("chip");
@@ -678,45 +672,4 @@ pub fn toggle_pause() {
 
 pub fn window() -> Option<gtk::ApplicationWindow> {
     ui().map(|u| u.borrow().window.clone())
-}
-
-fn snapshot_and_quit(app: &gtk::Application, out: std::path::PathBuf) {
-    let Some(ui) = ui() else { return };
-    let window = ui.borrow().window.clone();
-    window.set_opacity(0.01);
-    // A distinct title lets a window rule float it at a set size for screenshots.
-    window.set_title(Some("Activity snapshot"));
-    window.set_default_size(
-        std::env::var("ACTIVITY_SNAPSHOT_W").ok().and_then(|v| v.parse().ok()).unwrap_or(1120),
-        std::env::var("ACTIVITY_SNAPSHOT_H").ok().and_then(|v| v.parse().ok()).unwrap_or(820),
-    );
-    window.present();
-    let app = app.clone();
-    let delay = std::env::var("ACTIVITY_SNAPSHOT_DELAY").ok().and_then(|v| v.parse().ok()).unwrap_or(1800);
-    glib::timeout_add_local_once(std::time::Duration::from_millis(delay), move || {
-        // ACTIVITY_SNAPSHOT_PAGE=1 renders the whole current page, not just what fits.
-        let target = if std::env::var_os("ACTIVITY_SNAPSHOT_PAGE").is_some() {
-            UI.with(|cell| cell.borrow().clone()).and_then(|u| {
-                let u = u.borrow();
-                u.pages.get(u.current).and_then(|p| p.child()).and_then(|v| v.first_child())
-            })
-        } else {
-            window.child()
-        };
-        if let Some(child) = target {
-            let paintable = gtk::WidgetPaintable::new(Some(&child));
-            let (w, h) = (child.width(), child.height());
-            let snapshot = gtk::Snapshot::new();
-            snapshot.append_color(&gdk::RGBA::BLACK, &gtk::graphene::Rect::new(0.0, 0.0, w as f32, h as f32));
-            paintable.snapshot(&snapshot, w as f64, h as f64);
-            if let (Some(node), Some(renderer)) = (snapshot.to_node(), window.renderer()) {
-                let texture = renderer.render_texture(node, None);
-                match texture.save_to_png(&out) {
-                    Ok(()) => println!("snapshot {w}x{h} -> {}", out.display()),
-                    Err(e) => eprintln!("snapshot failed: {e}"),
-                }
-            }
-        }
-        app.quit();
-    });
 }
