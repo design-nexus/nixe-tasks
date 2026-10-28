@@ -51,13 +51,14 @@ window.activity-window button.live-pill.paused {
   color: @theme_danger;
 }
 
-/* The sidebar's group labels in px: in em they can resolve to nothing here. */
 .settings-navigation .nav-group {
   font-size: 11px;
 }
 
+/* The icon-only sidebar hides these labels itself. The shared sheet's font-size: 0
+   for them can stick after the sidebar expands again, so they keep their size. */
 .settings-navigation.compact .nav-group {
-  font-size: 0;
+  font-size: 11px;
 }
 
 /* Numbers that line up. */
