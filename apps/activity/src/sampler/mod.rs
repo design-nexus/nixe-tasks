@@ -2,9 +2,11 @@
 //! [`Snapshot`] and hands it to the UI thread over a channel. Nothing here
 //! touches GTK.
 
+pub mod conns;
 pub mod cpu;
 pub mod disk;
 pub mod gpu;
+pub mod groups;
 pub mod mem;
 pub mod net;
 pub mod procs;
@@ -33,6 +35,10 @@ pub struct Snapshot {
     pub windows: Vec<windows::Window>,
     pub process_count: usize,
     pub thread_count: u64,
+    /// Processes added up by app or service (empty while detail sampling is paused).
+    pub groups: Vec<groups::Group>,
+    pub conns: Option<conns::Conns>,
+    pub io_pressure: Option<cpu::Pressure>,
 }
 
 impl Snapshot {
@@ -82,6 +88,7 @@ pub fn start(control: Arc<Control>) -> async_channel::Receiver<Snapshot> {
         .name("sampler".into())
         .spawn(move || {
             let mut cpu = cpu::CpuSampler::new();
+            let mut mem = mem::MemSampler::new();
             let mut disks = disk::DiskSampler::new();
             let mut nets = net::NetSampler::new();
             let mut procs = procs::ProcSampler::new();
@@ -97,10 +104,11 @@ pub fn start(control: Arc<Control>) -> async_channel::Receiver<Snapshot> {
                 let detail = control.detail.load(Ordering::Relaxed);
                 let mut snap = Snapshot {
                     cpu: cpu.sample(elapsed),
-                    mem: mem::sample(),
+                    mem: mem.sample(elapsed),
                     disks: disks.sample(elapsed),
                     nets: nets.sample(elapsed),
                     sensors: sensors::sample(),
+                    io_pressure: cpu::pressure("io"),
                     ..Default::default()
                 };
                 if detail {
@@ -110,6 +118,8 @@ pub fn start(control: Arc<Control>) -> async_channel::Receiver<Snapshot> {
                     snap.process_count = list.len();
                     snap.thread_count = list.iter().map(|p| p.threads as u64).sum();
                     snap.gpus = gpus.sample(&clients);
+                    snap.groups = groups::groups(&list);
+                    snap.conns = Some(conns::sample(&clients.sockets));
                     if tick.is_multiple_of(2) {
                         windows = windows::clients();
                     }

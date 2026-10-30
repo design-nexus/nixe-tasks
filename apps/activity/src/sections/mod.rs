@@ -16,6 +16,7 @@ pub mod services;
 pub mod settings;
 pub mod startup;
 pub mod storage;
+pub mod top;
 
 pub struct Section {
     pub id: &'static str,
@@ -133,11 +134,11 @@ pub fn all() -> Vec<Section> {
         },
         Section {
             id: "sensors",
-            title: "Sensors & Power",
+            title: "Sensors",
             icon: "activity-thermometer-symbolic",
             group: "Performance",
-            description: "Temperatures, fans and the battery.",
-            keywords: "temperature thermal fan rpm battery charge power watts hwmon",
+            description: "Temperatures, fans, the battery and power.",
+            keywords: "temperature thermal fan rpm battery charge power watts hwmon charger usb-c profile health",
             files: Vec::new,
             build: sensors::build,
             readout: Some(|s| s.sensors.cpu_temp.map(fmt::temp).unwrap_or_default()),

@@ -186,16 +186,33 @@ fn record(history: &mut HashMap<String, VecDeque<f64>>, tracked: &HashSet<i32>, 
     let cap = capacity();
     let mut put = |k: String, v: f64| push(history, cap, k, v);
     put("cpu".into(), s.cpu.usage);
-    put("cpu.system".into(), s.cpu.system);
+    put("cpu.system".into(), s.cpu.system + s.cpu.irq);
+    put("cpu.user".into(), s.cpu.user);
     for (i, c) in s.cpu.cores.iter().enumerate() {
         put(format!("cpu.{i}"), *c);
     }
     let avg_freq = if s.cpu.freqs.is_empty() { 0.0 } else { s.cpu.freqs.iter().sum::<f64>() / s.cpu.freqs.len() as f64 };
     put("cpu.freq".into(), avg_freq);
+    put("cpu.freq.max".into(), s.cpu.freqs.iter().copied().fold(0.0, f64::max));
+    put("cpu.load".into(), s.cpu.load[0]);
+    if let Some(p) = s.cpu.pressure {
+        put("cpu.psi".into(), p.some10);
+    }
     let m = &s.mem;
     put("mem".into(), if m.total > 0 { m.used as f64 / m.total as f64 * 100.0 } else { 0.0 });
-    put("mem.cached".into(), if m.total > 0 { (m.used + m.cached) as f64 / m.total as f64 * 100.0 } else { 0.0 });
+    put("mem.bytes".into(), m.used as f64);
     put("swap".into(), if m.swap_total > 0 { m.swap_used as f64 / m.swap_total as f64 * 100.0 } else { 0.0 });
+    put("mem.swapin".into(), m.swap_in);
+    put("mem.swapout".into(), m.swap_out);
+    put("mem.faults".into(), m.major_faults);
+    if let Some(p) = m.pressure {
+        put("mem.psi".into(), p.some10);
+        put("mem.psi.full".into(), p.full10);
+    }
+    if let Some(p) = s.io_pressure {
+        put("io.psi".into(), p.some10);
+        put("io.psi.full".into(), p.full10);
+    }
     put("disk.read".into(), s.disk_read());
     put("disk.write".into(), s.disk_write());
     put("disk.busy".into(), s.disk_busy());
@@ -203,15 +220,32 @@ fn record(history: &mut HashMap<String, VecDeque<f64>>, tracked: &HashSet<i32>, 
         put(format!("disk.{}.read", d.name), d.read_bps);
         put(format!("disk.{}.write", d.name), d.write_bps);
         put(format!("disk.{}.busy", d.name), d.busy);
+        put(format!("disk.{}.riops", d.name), d.read_iops);
+        put(format!("disk.{}.wiops", d.name), d.write_iops);
+        put(format!("disk.{}.lat", d.name), d.latency_ms);
     }
     put("net.rx".into(), s.net_rx());
     put("net.tx".into(), s.net_tx());
     for n in &s.nets {
         put(format!("net.{}.rx", n.name), n.rx_bps);
         put(format!("net.{}.tx", n.name), n.tx_bps);
+        put(format!("net.{}.rxp", n.name), n.rx_pps);
+        put(format!("net.{}.txp", n.name), n.tx_pps);
+        if let Some(dbm) = n.signal {
+            put(format!("net.{}.signal", n.name), crate::fmt::signal_quality(dbm));
+        }
+    }
+    if let Some(c) = &s.conns {
+        put("net.conns".into(), c.established as f64);
     }
     for g in &s.gpus {
         put(format!("gpu.{}.util", g.pci), g.util.unwrap_or(0.0));
+        if let Some(f) = g.act_clock.or(g.clock) {
+            put(format!("gpu.{}.freq", g.pci), f);
+        }
+        if let Some(m) = g.client_mem {
+            put(format!("gpu.{}.mem", g.pci), m as f64);
+        }
         if let (Some(u), Some(t)) = (g.vram_used, g.vram_total)
             && t > 0
         {
@@ -227,6 +261,9 @@ fn record(history: &mut HashMap<String, VecDeque<f64>>, tracked: &HashSet<i32>, 
     }
     for t in &s.sensors.temps {
         put(format!("temp.{}.{}", t.chip, t.label), t.value);
+    }
+    for f in &s.sensors.fans {
+        put(format!("fan.{}.{}", f.chip, f.label), f.value);
     }
     for b in &s.sensors.batteries {
         put(format!("bat.{}", b.name), b.percent);

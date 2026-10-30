@@ -159,7 +159,9 @@ pub fn move_old_include() {
         if std::fs::write(path.with_file_name(format!("hyprland.lua.activity-bak.{stamp}")), &text).is_err() {
             return;
         }
-        let new = text.replace("require(\"hypr.tasks\") -- Tasks app", "require(\"hypr.activity\") -- Activity app").replace("require(\"hypr.tasks\")", "require(\"hypr.activity\")");
+        let new = text
+            .replace("require(\"hypr.tasks\") -- Tasks app", "require(\"hypr.activity\") -- Activity app")
+            .replace("require(\"hypr.tasks\")", "require(\"hypr.activity\")");
         if cmd::atomic_write(&path, &new).is_err() {
             return;
         }
@@ -479,30 +481,53 @@ pub fn parse_props(text: &str) -> HashMap<String, String> {
     text.lines().filter_map(|l| l.split_once('=')).map(|(k, v)| (k.to_string(), v.to_string())).collect()
 }
 
+/// systemd's durations ("1min 10.752s", "197ms") as seconds.
+fn duration_secs<'a>(parts: impl IntoIterator<Item = &'a str>) -> Option<f64> {
+    let mut secs = 0.0;
+    for p in parts {
+        let (num, mult) = if let Some(v) = p.strip_suffix("ms") {
+            (v, 0.001)
+        } else if let Some(v) = p.strip_suffix("min") {
+            (v, 60.0)
+        } else if let Some(v) = p.strip_suffix("us") {
+            (v, 0.000001)
+        } else if let Some(v) = p.strip_suffix('s') {
+            (v, 1.0)
+        } else {
+            (p.strip_suffix('h')?, 3600.0)
+        };
+        secs += num.parse::<f64>().ok()? * mult;
+    }
+    Some(secs)
+}
+
 /// `systemd-analyze blame` as seconds per unit.
 pub fn parse_blame(text: &str) -> HashMap<String, f64> {
     text.lines()
         .filter_map(|l| {
             let mut parts: Vec<&str> = l.split_whitespace().collect();
             let unit = parts.pop()?.to_string();
-            let mut secs = 0.0;
-            for p in parts {
-                let (num, mult) = if let Some(v) = p.strip_suffix("ms") {
-                    (v, 0.001)
-                } else if let Some(v) = p.strip_suffix("min") {
-                    (v, 60.0)
-                } else if let Some(v) = p.strip_suffix("us") {
-                    (v, 0.000001)
-                } else if let Some(v) = p.strip_suffix('s') {
-                    (v, 1.0)
-                } else {
-                    (p.strip_suffix('h')?, 3600.0)
-                };
-                secs += num.parse::<f64>().ok()? * mult;
-            }
-            Some((unit, secs))
+            Some((unit, duration_secs(parts)?))
         })
         .collect()
+}
+
+/// The phases of the last boot from `systemd-analyze time`: ("firmware", 6.9), ("kernel", 70.8)…
+pub fn parse_boot_time(text: &str) -> Vec<(String, f64)> {
+    let Some(line) = text.lines().find_map(|l| l.strip_prefix("Startup finished in ")) else { return Vec::new() };
+    let body = line.split(" = ").next().unwrap_or(line);
+    body.split(" + ")
+        .filter_map(|part| {
+            let (dur, label) = part.trim().rsplit_once(' ')?;
+            let label = label.trim_start_matches('(').trim_end_matches(')').to_string();
+            Some((label, duration_secs(dur.split_whitespace())?))
+        })
+        .collect()
+}
+
+pub fn boot_time(user: bool) -> Vec<(String, f64)> {
+    let scope = if user { "--user" } else { "--system" };
+    parse_boot_time(&cmd::output(&["systemd-analyze", scope, "time", "--no-pager"]).unwrap_or_default())
 }
 
 pub fn blame(user: bool) -> HashMap<String, f64> {
@@ -607,6 +632,20 @@ o.exec_on_start('say "hi"')
         assert!((b["wayland-session-waitenv.service"] - 2.781).abs() < 1e-9);
         assert!((b["gvfs.service"] - 0.354).abs() < 1e-9);
         assert!((b["slow.service"] - 62.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn parses_boot_time() {
+        let t = parse_boot_time(
+            "Startup finished in 6.872s (firmware) + 8.070s (loader) + 1min 10.752s (kernel) + 5.899s (userspace) = 1min 31.595s \n\
+             graphical.target reached after 5.898s in userspace.\n",
+        );
+        let labels: Vec<&str> = t.iter().map(|(l, _)| l.as_str()).collect();
+        assert_eq!(labels, ["firmware", "loader", "kernel", "userspace"]);
+        assert!((t[2].1 - 70.752).abs() < 1e-9);
+        let u = parse_boot_time("Startup finished in 197ms (userspace) \ndefault.target reached after 197ms in userspace.\n");
+        assert_eq!(u.len(), 1);
+        assert!((u[0].1 - 0.197).abs() < 1e-9);
     }
 
     #[test]

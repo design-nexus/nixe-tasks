@@ -1,3 +1,4 @@
+use crate::charts::{self, Bar, PAIR};
 use crate::startup::{self, HyprEntry, Managed, Unit, XdgEntry};
 use crate::widgets::{self, Page};
 use crate::{apps, cmd, fmt, paths, window};
@@ -13,6 +14,8 @@ struct Data {
     xdg: Vec<XdgEntry>,
     units: Vec<Unit>,
     blame: HashMap<String, f64>,
+    boot: Vec<(String, f64)>,
+    session: Vec<(String, f64)>,
 }
 
 fn load() -> Data {
@@ -24,6 +27,8 @@ fn load() -> Data {
         xdg: startup::xdg_entries(),
         units: startup::units(true),
         blame: startup::blame(true),
+        boot: startup::boot_time(false),
+        session: startup::boot_time(true),
     }
 }
 
@@ -31,24 +36,18 @@ fn reload() {
     window::rebuild("startup");
 }
 
-fn mono(text: &str) -> gtk::Label {
-    let l = widgets::label(text, "dim");
-    l.add_css_class("mono");
-    l.set_ellipsize(pango::EllipsizeMode::End);
-    l.set_tooltip_text(Some(text));
-    l
-}
-
-/// A startup row: icon, name, description, command, tags, then controls.
+/// A startup row: icon, then the name and its tags on one line, and under it the
+/// description (or the command, when there's none). The command is always in the tooltip.
 fn item_row(icon: &str, name: &str, desc: &str, command: &str, tags: &[gtk::Label], controls: &[gtk::Widget]) -> gtk::Box {
     let row = widgets::hbox(12);
     row.add_css_class("settings-option");
+    row.add_css_class("startup-row");
     let img = gtk::Image::from_icon_name(if icon.is_empty() { "utilities-terminal-symbolic" } else { icon });
     img.set_pixel_size(if icon.ends_with("-symbolic") || icon.is_empty() { 18 } else { 24 });
     img.set_size_request(24, -1);
     img.set_valign(gtk::Align::Center);
     row.append(&img);
-    let text = widgets::vbox(2);
+    let text = widgets::vbox(1);
     text.set_hexpand(true);
     text.set_valign(gtk::Align::Center);
     let head = widgets::hbox(8);
@@ -59,13 +58,17 @@ fn item_row(icon: &str, name: &str, desc: &str, command: &str, tags: &[gtk::Labe
         head.append(tag);
     }
     text.append(&head);
-    if !desc.is_empty() {
-        let d = widgets::label(desc, "settings-option-description");
-        d.set_wrap(true);
+    let second = if desc.is_empty() { command } else { desc };
+    if !second.is_empty() {
+        let d = widgets::label(second, "settings-option-description");
+        if desc.is_empty() {
+            d.add_css_class("mono");
+        }
+        d.set_ellipsize(pango::EllipsizeMode::End);
         text.append(&d);
     }
     if !command.is_empty() {
-        text.append(&mono(command));
+        row.set_tooltip_text(Some(command));
     }
     row.append(&text);
     for c in controls {
@@ -109,46 +112,144 @@ pub fn build(page: &Page) {
     page.body.append(&holder);
     let loading = widgets::loading("Reading startup items…");
     holder.append(&loading);
+    let page = Page { root: page.root.clone(), body: holder.clone() };
     cmd::background(load, move |d| {
         holder.remove(&loading);
-        fill(&holder, d);
+        fill(&page, d);
     });
 }
 
-fn group(body: &gtk::Box, title: &str, note: &str) -> gtk::Box {
-    body.append(&widgets::label(&title.to_uppercase(), "group-title"));
+/// A group of rows: a title, one line about it (more in its tooltip), then the rows.
+fn group(page: &Page, title: &str, note: &str, more: &str) -> gtk::Box {
+    let g = page.group(title);
     if !note.is_empty() {
-        let n = widgets::label("", "group-note");
-        n.set_markup(note);
-        n.set_wrap(true);
-        body.append(&n);
+        g.note(note);
     }
-    let list = widgets::vbox(6);
-    body.append(&list);
+    if !more.is_empty() {
+        g.wrapper.set_tooltip_text(Some(more));
+    }
+    g.list
+}
+
+/// A group that starts folded: its title line has a button to show the rows.
+fn folded(page: &Page, title: &str, note: &str, count: usize) -> gtk::Box {
+    let g = page.group(title);
+    if !note.is_empty() {
+        g.note(note);
+    }
+    let toggle = gtk::Button::with_label(&format!("Show {count}"));
+    toggle.add_css_class("flat");
+    toggle.add_css_class("group-action");
+    g.header_end(&toggle);
+    let revealer = gtk::Revealer::new();
+    revealer.set_transition_type(gtk::RevealerTransitionType::SlideDown);
+    revealer.set_transition_duration(if crate::prefs::get().reduce_motion { 0 } else { 160 });
+    let list = widgets::vbox(0);
+    list.add_css_class("group-list");
+    revealer.set_child(Some(&list));
+    g.list.add_css_class("bare");
+    g.add(&revealer);
+    toggle.connect_clicked(move |b| {
+        let open = !revealer.reveals_child();
+        revealer.set_reveal_child(open);
+        b.set_label(&if open { "Hide".to_string() } else { format!("Show {count}") });
+    });
     list
 }
 
-fn fill(body: &gtk::Box, d: Data) {
-    let units: HashMap<&str, &Unit> = d.units.iter().map(|u| (u.name.as_str(), u)).collect();
+/// The boot, phase by phase, and what took longest at login.
+fn summary(page: &Page, d: &Data) {
+    let g = page.cards("At login");
 
-    // ----- Summary -----
-    let enabled_xdg = d.xdg.iter().filter(|e| e.enabled && !e.other_desktop).count();
-    let enabled_units = d.units.iter().filter(|u| u.file_state == "enabled").count();
+    let names: Vec<String> = d.boot.iter().map(|(l, _)| boot_phase(l)).collect();
+    let refs: Vec<&str> = names.iter().map(String::as_str).collect();
+    let bar = charts::stack_bar(&refs, None);
+    let total: f64 = d.boot.iter().map(|(_, s)| s).sum();
+    bar.set(
+        &d.boot.iter().map(|(_, s)| *s).collect::<Vec<_>>(),
+        total.max(0.001),
+        &d.boot.iter().map(|(_, s)| short_time(*s)).collect::<Vec<_>>(),
+    );
+    let body = widgets::vbox(14);
+    body.append(&bar.root);
+    let session: f64 = d.session.iter().map(|(_, s)| s).sum();
+    let note = widgets::label(
+        &if session > 0.0 { format!("Then your session's services took {}.", short_time(session)) } else { String::new() },
+        "dim",
+    );
+    note.set_wrap(true);
+    body.append(&note);
+    let (boot_card, boot_sum) = charts::card("Last boot", &body);
+    boot_sum.set_text(&if total > 0.0 { format!("{} to the desktop", short_time(total)) } else { "not measured".into() });
+    if d.boot.is_empty() {
+        bar.root.set_visible(false);
+        note.set_text("systemd didn't record this boot's timing.");
+    }
+
+    let mut blame: Vec<(&String, &f64)> = d.blame.iter().collect();
+    blame.sort_by(|a, b| b.1.total_cmp(a.1));
+    let list = charts::bar_list(6, "Nothing was measured.", false);
+    let max = blame.first().map_or(1.0, |b| *b.1).max(0.001);
+    let bars: Vec<Bar> = blame
+        .iter()
+        .take(6)
+        .map(|(unit, secs)| Bar {
+            name: pretty_unit(unit),
+            frac: **secs / max,
+            value: short_time(**secs),
+            tip: unit.to_string(),
+            warn: **secs >= 5.0,
+            ..Default::default()
+        })
+        .collect();
+    list.set(&bars);
+    let (slow_card, _) = charts::card("Slowest to start", &list.root);
+    slow_card.set_tooltip_text(Some("What took longest at your last login (systemd's measurements)"));
+    g.add(&charts::row(&[boot_card.upcast_ref(), slow_card.upcast_ref()], PAIR));
+
     let managed_on = d.managed.hyprland.iter().filter(|m| m.enabled).count();
-    let slow: f64 = d.blame.values().sum();
-    let summary = widgets::vbox(0);
-    summary.add_css_class("graph-card");
-    let (flow, v) = widgets::kv_flow(&["Hyprland", "Apps", "User services", "Start time (services)"]);
-    v[0].set_text(&(d.user.len() + d.omarchy.len() + managed_on).to_string());
-    v[1].set_text(&enabled_xdg.to_string());
-    v[2].set_text(&enabled_units.to_string());
-    v[3].set_text(&if slow > 0.0 { format!("{slow:.1} s") } else { "–".into() });
-    summary.append(&flow);
-    body.append(&summary);
+    let hypr = charts::tile("With Hyprland", None);
+    hypr.value.set_text(&(d.user.len() + d.omarchy.len() + managed_on).to_string());
+    hypr.sub.set_text(&format!("{} Omarchy · {} yours", d.omarchy.len(), d.user.len() + managed_on));
+    let here: Vec<&XdgEntry> = d.xdg.iter().filter(|e| !e.other_desktop).collect();
+    let apps_on = here.iter().filter(|e| e.enabled).count();
+    let apps_tile = charts::tile("Apps", None);
+    apps_tile.value.set_text(&apps_on.to_string());
+    apps_tile.sub.set_text(&format!("of {} that can start here", here.len()));
+    let svc: Vec<&Unit> = d.units.iter().filter(|u| u.file_state == "enabled").collect();
+    let svc_tile = charts::tile("Background services", None);
+    svc_tile.value.set_text(&svc.len().to_string());
+    svc_tile.sub.set_text(&format!("{} running now", svc.iter().filter(|u| u.running()).count()));
+    let off = d.xdg.iter().filter(|e| !e.enabled && !e.other_desktop).count()
+        + d.managed.hyprland.iter().filter(|m| !m.enabled).count()
+        + d.units.iter().filter(|u| u.file_state == "disabled" && !u.name.starts_with("app-")).count();
+    let off_tile = charts::tile("Turned off", None);
+    off_tile.value.set_text(&off.to_string());
+    off_tile.sub.set_text("won't start at login");
+    g.add(&charts::row(
+        &[hypr.root.upcast_ref(), apps_tile.root.upcast_ref(), svc_tile.root.upcast_ref(), off_tile.root.upcast_ref()],
+        150,
+    ));
+}
+
+fn boot_phase(label: &str) -> String {
+    match label {
+        "firmware" => "Firmware".into(),
+        "loader" => "Boot loader".into(),
+        "kernel" => "Kernel".into(),
+        "initrd" => "Initial ramdisk".into(),
+        "userspace" => "System services".into(),
+        other => other.to_string(),
+    }
+}
+
+fn fill(page: &Page, d: Data) {
+    let units: HashMap<&str, &Unit> = d.units.iter().map(|u| (u.name.as_str(), u)).collect();
+    summary(page, &d);
 
     // ----- Added in Activity -----
     let list =
-        group(body, "Added here", "Started by Hyprland when you log in. Activity keeps these in <tt>~/.config/hypr/activity.lua</tt>.");
+        group(page, "Added here", "Started by Hyprland when you log in.", "Activity keeps these in ~/.config/hypr/activity.lua.");
     if !d.managed.hyprland.is_empty() && !d.included {
         let b = widgets::banner(
             "Hyprland doesn't load <tt>activity.lua</tt> yet, so these won't start. \
@@ -203,106 +304,38 @@ fn fill(body: &gtk::Box, d: Data) {
 
     // ----- XDG autostart -----
     let list = group(
-        body,
+        page,
         "Apps",
-        "Programs that registered themselves to start at login (<tt>~/.config/autostart</tt> and <tt>/etc/xdg/autostart</tt>). \
-         Turning one off leaves the system file alone.",
+        "Programs that asked to start at login. Turning one off leaves the system file alone.",
+        "From ~/.config/autostart and /etc/xdg/autostart.",
     );
-    if d.xdg.is_empty() {
+    let (here, elsewhere): (Vec<&XdgEntry>, Vec<&XdgEntry>) = d.xdg.iter().partition(|e| !e.other_desktop);
+    if here.is_empty() {
         list.append(&widgets::row("Nothing here", "No app has asked to start at login.", None));
     }
-    for e in &d.xdg {
-        let unit_name = startup::xdg_unit(&e.id);
-        let unit = units.get(unit_name.as_str()).copied();
-        let mut tags = Vec::new();
-        if e.other_desktop {
-            let t = widgets::tag("Not for Hyprland", "");
-            t.set_tooltip_text(Some("It only runs on other desktops (OnlyShowIn/NotShowIn), so it won't start here either way."));
-            tags.push(t);
-        }
-        if let Some(t) = run_tag(unit) {
-            tags.push(t);
-        }
-        if let Some(t) = timing_tag(d.blame.get(&unit_name).copied()) {
-            tags.push(t);
-        }
-        if !e.system {
-            tags.push(widgets::tag("Yours", ""));
-        }
-        let mut controls: Vec<gtk::Widget> = Vec::new();
-        if e.system && e.user_file.is_some() {
-            let reset = gtk::Button::from_icon_name("edit-undo-symbolic");
-            reset.add_css_class("reset-button");
-            reset.add_css_class("flat");
-            reset.set_tooltip_text(Some("Restore the system default (remove your override)"));
-            let e2 = e.clone();
-            reset.connect_clicked(move |_| match startup::remove_user_xdg(&e2) {
-                Ok(()) => reload(),
-                Err(err) => window::toast(&format!("Couldn't remove the override: {err}")),
-            });
-            controls.push(reset.upcast());
-        } else if !e.system {
-            let e2 = e.clone();
-            let remove = widgets::two_click("Remove", "Click again to remove", move || match startup::remove_user_xdg(&e2) {
-                Ok(()) => reload(),
-                Err(err) => window::toast(&format!("Couldn't remove it: {err}")),
-            });
-            controls.push(remove.upcast());
-        }
-        let sw = gtk::Switch::new();
-        sw.set_active(e.enabled);
-        sw.set_sensitive(!e.other_desktop);
-        sw.set_tooltip_text(Some("Start at login"));
-        let e2 = e.clone();
-        sw.connect_active_notify(move |s| {
-            if let Err(err) = startup::set_xdg_enabled(&e2, s.is_active()) {
-                window::toast(&format!("Couldn't change it: {err:#}"));
-            } else {
-                window::toast(if s.is_active() {
-                    "It will start at your next login"
-                } else {
-                    "It won't start at your next login"
-                });
-            }
-        });
-        controls.push(sw.upcast());
-        let row = item_row(&e.icon, &e.name, &e.comment, &e.exec, &tags, &controls);
-        if e.other_desktop {
+    for e in here {
+        list.append(&xdg_row(e, &units, &d.blame));
+    }
+    if !elsewhere.is_empty() {
+        let fold = folded(
+            page,
+            "Only for other desktops",
+            "These won't start under Hyprland either way (OnlyShowIn/NotShowIn).",
+            elsewhere.len(),
+        );
+        for e in elsewhere {
+            let row = xdg_row(e, &units, &d.blame);
             row.set_opacity(0.6);
+            fold.append(&row);
         }
-        list.append(&row);
-    }
-
-    // ----- Hyprland: yours -----
-    let list = group(
-        body,
-        "Your Hyprland autostart",
-        "From <tt>~/.config/hypr/autostart.lua</tt>. Activity doesn't rewrite your config; use Open config to change these.",
-    );
-    if d.user.is_empty() {
-        list.append(&widgets::row("Nothing here", "Your autostart.lua doesn't start anything.", None));
-    }
-    for e in &d.user {
-        let (name, icon) = app_name(&e.command);
-        list.append(&item_row(&icon, &name, "", &e.command, &[widgets::tag("autostart.lua", "")], &[]));
-    }
-
-    // ----- Hyprland: Omarchy -----
-    let list = group(
-        body,
-        "Omarchy",
-        "Omarchy's own startup: the bar, notifications, drive mounting and other essentials. Shown for reference.",
-    );
-    for e in &d.omarchy {
-        let (name, icon) = app_name(&e.command);
-        list.append(&item_row(&icon, &name, "", &e.command, &[widgets::tag("Omarchy", "")], &[]));
     }
 
     // ----- systemd user services -----
     let list = group(
-        body,
+        page,
         "Background services",
-        "Your systemd user services that start with the session. The Services page has every unit.",
+        "Your systemd user services that start with the session.",
+        "The Services page has every unit, with logs and details.",
     );
     let mut svc: Vec<&Unit> = d
         .units
@@ -334,42 +367,74 @@ fn fill(body: &gtk::Box, d: Data) {
             });
         });
         let title = startup::unescape(u.name.trim_end_matches(".service"));
-        list.append(&item_row("emblem-system-symbolic", &title, &u.description, "", &tags, &[sw.upcast()]));
+        let row = item_row("emblem-system-symbolic", &title, &u.description, "", &tags, &[sw.upcast()]);
+        row.set_tooltip_text(Some(&u.name));
+        list.append(&row);
     }
 
-    // ----- Slowest -----
-    let mut blame: Vec<(&String, &f64)> = d.blame.iter().collect();
-    blame.sort_by(|a, b| b.1.total_cmp(a.1));
-    if !blame.is_empty() {
-        let list = group(body, "Slowest to start", "What took longest at your last login (systemd's measurements).");
-        let card = widgets::vbox(8);
-        card.add_css_class("graph-card");
-        let max = *blame[0].1;
-        for (unit, secs) in blame.into_iter().take(8) {
-            let r = widgets::hbox(12);
-            let n = widgets::label(&pretty_unit(unit), "");
-            n.set_ellipsize(pango::EllipsizeMode::End);
-            n.set_width_chars(22);
-            n.set_max_width_chars(22);
-            n.set_tooltip_text(Some(unit));
-            // Relative lengths: no "hot" colour here.
-            let bar = gtk::LevelBar::for_interval(0.0, 1.0);
-            for name in ["low", "high", "full"] {
-                bar.remove_offset_value(Some(name));
-            }
-            bar.set_hexpand(true);
-            bar.set_valign(gtk::Align::Center);
-            bar.set_value(if max > 0.0 { secs / max } else { 0.0 });
-            let t = widgets::label(&short_time(*secs), "cell-num");
-            t.set_width_chars(9);
-            t.set_xalign(1.0);
-            r.append(&n);
-            r.append(&bar);
-            r.append(&t);
-            card.append(&r);
-        }
-        list.append(&card);
+    // ----- Hyprland: yours, then Omarchy's (for reference) -----
+    let list = folded(page, "Your Hyprland autostart", "From autostart.lua. Use Open config to change these.", d.user.len());
+    if d.user.is_empty() {
+        list.append(&widgets::row("Nothing here", "Your autostart.lua doesn't start anything.", None));
     }
+    for e in &d.user {
+        let (name, icon) = app_name(&e.command);
+        list.append(&item_row(&icon, &name, "", &e.command, &[], &[]));
+    }
+    let list = folded(page, "Omarchy", "Omarchy's own startup: the bar, notifications, drive mounting.", d.omarchy.len());
+    for e in &d.omarchy {
+        let (name, icon) = app_name(&e.command);
+        list.append(&item_row(&icon, &name, "", &e.command, &[], &[]));
+    }
+}
+
+fn xdg_row(e: &XdgEntry, units: &HashMap<&str, &Unit>, blame: &HashMap<String, f64>) -> gtk::Box {
+    let unit_name = startup::xdg_unit(&e.id);
+    let unit = units.get(unit_name.as_str()).copied();
+    let mut tags = Vec::new();
+    if let Some(t) = run_tag(unit) {
+        tags.push(t);
+    }
+    if let Some(t) = timing_tag(blame.get(&unit_name).copied()) {
+        tags.push(t);
+    }
+    if !e.system {
+        tags.push(widgets::tag("Yours", ""));
+    }
+    let mut controls: Vec<gtk::Widget> = Vec::new();
+    if e.system && e.user_file.is_some() {
+        let reset = gtk::Button::from_icon_name("edit-undo-symbolic");
+        reset.add_css_class("reset-button");
+        reset.add_css_class("flat");
+        reset.set_tooltip_text(Some("Restore the system default (remove your override)"));
+        let e2 = e.clone();
+        reset.connect_clicked(move |_| match startup::remove_user_xdg(&e2) {
+            Ok(()) => reload(),
+            Err(err) => window::toast(&format!("Couldn't remove the override: {err}")),
+        });
+        controls.push(reset.upcast());
+    } else if !e.system {
+        let e2 = e.clone();
+        let remove = widgets::two_click("Remove", "Click again to remove", move || match startup::remove_user_xdg(&e2) {
+            Ok(()) => reload(),
+            Err(err) => window::toast(&format!("Couldn't remove it: {err}")),
+        });
+        controls.push(remove.upcast());
+    }
+    let sw = gtk::Switch::new();
+    sw.set_active(e.enabled);
+    sw.set_sensitive(!e.other_desktop);
+    sw.set_tooltip_text(Some("Start at login"));
+    let e2 = e.clone();
+    sw.connect_active_notify(move |s| {
+        if let Err(err) = startup::set_xdg_enabled(&e2, s.is_active()) {
+            window::toast(&format!("Couldn't change it: {err:#}"));
+        } else {
+            window::toast(if s.is_active() { "It will start at your next login" } else { "It won't start at your next login" });
+        }
+    });
+    controls.push(sw.upcast());
+    item_row(&e.icon, &e.name, &e.comment, &e.exec, &tags, &controls)
 }
 
 fn short_time(secs: f64) -> String {

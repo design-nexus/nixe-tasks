@@ -114,7 +114,7 @@ enum Col {
 
 const COLUMNS: &[(Col, &str, &str, i32)] = &[
     (Col::Name, "name", "Name", 0),
-    (Col::Pid, "pid", "PID", 66),
+    (Col::Pid, "pid", "PID", 78),
     (Col::User, "user", "User", 84),
     // Wide enough for the totals in their titles ("CPU 23%").
     (Col::Cpu, "cpu", "CPU", 80),
@@ -957,6 +957,8 @@ fn details_panel() -> Details {
     let revealer = gtk::Revealer::new();
     revealer.set_transition_type(gtk::RevealerTransitionType::SlideUp);
     revealer.set_transition_duration(if prefs::get().reduce_motion { 0 } else { 160 });
+    // Its title expands; docked beside the table, a hidden panel would still take half the spare width.
+    revealer.set_hexpand(false);
     let panel = widgets::vbox(10);
     panel.add_css_class("details-panel");
     revealer.set_child(Some(&panel));

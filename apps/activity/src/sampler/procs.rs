@@ -29,6 +29,12 @@ pub struct Proc {
     /// Holds the NVIDIA GPU open.
     pub nvidia: bool,
     pub fds: u32,
+    /// The cgroup it runs in ("/user.slice/…/app-Hyprland-firefox-1234.scope").
+    pub cgroup: String,
+    /// Swapped-out memory (`VmSwap`), refreshed every few samples.
+    pub swap: u64,
+    /// GPU memory its DRM clients hold (Intel/AMD fdinfo).
+    pub gpu_mem: u64,
 }
 
 /// Fields of `/proc/[pid]/stat` we use.
@@ -84,6 +90,20 @@ pub struct DrmClient {
     pub id: String,
     /// Engine name -> (busy ns, capacity).
     pub engines: HashMap<String, (u64, u64)>,
+    /// Memory resident in each region ("system", "vram0", "local0"…), bytes.
+    pub resident: u64,
+}
+
+/// "123456 KiB" / "12 MiB" / "4096" as bytes.
+fn fdinfo_bytes(v: &str) -> u64 {
+    let mut parts = v.split_whitespace();
+    let n: u64 = parts.next().and_then(|n| n.parse().ok()).unwrap_or(0);
+    match parts.next() {
+        Some("KiB") => n * 1024,
+        Some("MiB") => n * 1024 * 1024,
+        Some("GiB") => n * 1024 * 1024 * 1024,
+        _ => n,
+    }
 }
 
 pub fn parse_fdinfo(text: &str) -> Option<DrmClient> {
@@ -96,6 +116,8 @@ pub fn parse_fdinfo(text: &str) -> Option<DrmClient> {
             c.pdev = v.to_string();
         } else if k == "drm-client-id" {
             c.id = v.to_string();
+        } else if k.starts_with("drm-resident-") {
+            c.resident += fdinfo_bytes(v);
         } else if let Some(engine) = k.strip_prefix("drm-engine-capacity-") {
             caps.insert(engine.to_string(), v.parse().unwrap_or(1));
         } else if let Some(engine) = k.strip_prefix("drm-engine-") {
@@ -119,16 +141,29 @@ struct FdScan {
     count: u32,
     drm: Vec<String>,
     nvidia: bool,
+    swap: u64,
+    sockets: Vec<u64>,
+}
+
+/// `VmSwap` from `/proc/[pid]/status`, in bytes.
+pub fn parse_swap(status: &str) -> u64 {
+    status
+        .lines()
+        .find_map(|l| l.strip_prefix("VmSwap:"))
+        .and_then(|v| v.split_whitespace().next()?.parse::<u64>().ok())
+        .map_or(0, |kb| kb * 1024)
 }
 
 fn scan_fds(pid: i32) -> FdScan {
-    let mut scan = FdScan::default();
+    let mut scan = FdScan { swap: parse_swap(&read(&format!("/proc/{pid}/status"))), ..Default::default() };
     let Ok(dir) = std::fs::read_dir(format!("/proc/{pid}/fd")) else { return scan };
     for e in dir.flatten() {
         scan.count += 1;
         let Ok(target) = std::fs::read_link(e.path()) else { continue };
         let t = target.to_string_lossy();
-        if t.starts_with("/dev/dri/") {
+        if let Some(inode) = t.strip_prefix("socket:[").and_then(|r| r.strip_suffix(']')).and_then(|n| n.parse().ok()) {
+            scan.sockets.push(inode);
+        } else if t.starts_with("/dev/dri/") {
             scan.drm.push(e.file_name().to_string_lossy().to_string());
         } else if let Some(rest) = t.strip_prefix("/dev/nvidia")
             && rest.chars().next().is_some_and(|c| c.is_ascii_digit())
@@ -158,14 +193,23 @@ pub struct GpuClients {
     pub clients: HashMap<String, usize>,
     /// Processes that hold an NVIDIA device node open.
     pub nvidia: usize,
+    /// PCI address -> each engine's busy %, by engine name.
+    pub engines: HashMap<String, Vec<(String, f64)>>,
+    /// PCI address -> memory its clients hold.
+    pub memory: HashMap<String, u64>,
+    /// Socket inode -> the process holding it (from the last fd scan).
+    pub sockets: HashMap<u64, i32>,
 }
 
 /// Per pid: start time, CPU ticks, and storage I/O byte counters.
 type Prev = (u64, u64, Option<(u64, u64)>);
 
+/// Per pid and start time: name, command line, cgroup.
+type Names = HashMap<(i32, u64), (String, String, String)>;
+
 pub struct ProcSampler {
     prev: HashMap<i32, Prev>,
-    names: HashMap<(i32, u64), (String, String)>,
+    names: Names,
     users: HashMap<u32, String>,
     fds: HashMap<i32, FdScan>,
     drm_prev: HashMap<(String, String), HashMap<String, u64>>,
@@ -221,7 +265,7 @@ impl ProcSampler {
             let kernel = pid == 2 || stat.ppid == 2;
             let key = (pid, stat.start);
             live.insert(key);
-            let (name, cmdline) = self
+            let (name, cmdline, cgroup) = self
                 .names
                 .entry(key)
                 .or_insert_with(|| {
@@ -244,7 +288,12 @@ impl ProcSampler {
                             name = full;
                         }
                     }
-                    (name, args.join(" "))
+                    let cgroup = read(&format!("{base}/cgroup"))
+                        .lines()
+                        .find_map(|l| l.strip_prefix("0::"))
+                        .unwrap_or_default()
+                        .to_string();
+                    (name, args.join(" "), cgroup)
                 })
                 .clone();
             let io = if kernel { None } else { parse_io(&read(&format!("{base}/io"))) };
@@ -261,6 +310,7 @@ impl ProcSampler {
                 rss: stat.rss_pages * self.page,
                 start: stat.start as f64 / self.clk_tck,
                 kernel,
+                cgroup,
                 ..Default::default()
             };
             if let Some(&(start, ticks, prev_io)) = self.prev.get(&pid)
@@ -279,6 +329,10 @@ impl ProcSampler {
             if let Some(scan) = self.fds.get(&pid) {
                 p.fds = scan.count;
                 p.nvidia = scan.nvidia;
+                p.swap = scan.swap;
+                for s in &scan.sockets {
+                    gpu.sockets.insert(*s, pid);
+                }
                 if scan.nvidia && pid != self.me {
                     gpu.nvidia += 1;
                 }
@@ -293,6 +347,8 @@ impl ProcSampler {
                     if !clients_seen.insert(ckey.clone()) {
                         continue;
                     }
+                    p.gpu_mem += client.resident;
+                    *gpu.memory.entry(client.pdev.clone()).or_default() += client.resident;
                     let prev = self.drm_prev.get(&ckey);
                     let mut now = HashMap::new();
                     for (engine, (ns, cap)) in &client.engines {
@@ -314,7 +370,15 @@ impl ProcSampler {
         self.prev = next_prev;
         self.names.retain(|k, _| live.contains(k));
         self.drm_prev = drm_next;
-        gpu.busy = device_busy.into_iter().map(|(dev, e)| (dev, e.values().copied().fold(0.0, f64::max).min(100.0))).collect();
+        gpu.busy = device_busy.iter().map(|(dev, e)| (dev.clone(), e.values().copied().fold(0.0, f64::max).min(100.0))).collect();
+        gpu.engines = device_busy
+            .into_iter()
+            .map(|(dev, e)| {
+                let mut list: Vec<(String, f64)> = e.into_iter().map(|(n, v)| (n, v.min(100.0))).collect();
+                list.sort_by(|a, b| a.0.cmp(&b.0));
+                (dev, list)
+            })
+            .collect();
         gpu.clients = client_pids.into_iter().map(|(dev, pids)| (dev, pids.len())).collect();
         (procs, gpu)
     }
@@ -347,11 +411,19 @@ mod tests {
     #[test]
     fn parses_drm_fdinfo() {
         let text = "pos:\t0\ndrm-driver:\ti915\ndrm-client-id:\t162\ndrm-pdev:\t0000:00:02.0\n\
-                    drm-engine-render:\t93903783376 ns\ndrm-engine-video:\t0 ns\ndrm-engine-capacity-video:\t2\n";
+                    drm-engine-render:\t93903783376 ns\ndrm-engine-video:\t0 ns\ndrm-engine-capacity-video:\t2\n\
+                    drm-total-system0:\t2048 KiB\ndrm-resident-system0:\t1024 KiB\ndrm-resident-stolen:\t2 MiB\n";
         let c = parse_fdinfo(text).unwrap();
         assert_eq!(c.pdev, "0000:00:02.0");
         assert_eq!(c.id, "162");
         assert_eq!(c.engines["render"], (93903783376, 1));
         assert_eq!(c.engines["video"], (0, 2));
+        assert_eq!(c.resident, 3 * 1024 * 1024);
+    }
+
+    #[test]
+    fn parses_swap() {
+        assert_eq!(parse_swap("Name:\tfoo\nVmRSS:\t 100 kB\nVmSwap:\t    12 kB\n"), 12 * 1024);
+        assert_eq!(parse_swap("Name:\tkthreadd\n"), 0);
     }
 }

@@ -25,6 +25,21 @@ pub struct Battery {
     pub cycles: Option<u64>,
     /// Hours until empty (discharging) or full (charging).
     pub hours_left: Option<f64>,
+    pub volts: f64,
+    pub model: String,
+    pub technology: String,
+    /// Charging stops at this % (to spare the battery), when set below 100.
+    pub limit: Option<f64>,
+}
+
+/// A USB-C port that can charge the machine.
+#[derive(Debug, Clone, Default)]
+pub struct PowerSource {
+    pub name: String,
+    pub online: bool,
+    /// The negotiated mode ("PD", "PD_PPS", "C").
+    pub mode: String,
+    pub watts: f64,
 }
 
 impl Battery {
@@ -40,6 +55,12 @@ pub struct Sensors {
     pub cpu_temp: Option<f64>,
     pub batteries: Vec<Battery>,
     pub ac: Option<bool>,
+    pub sources: Vec<PowerSource>,
+}
+
+/// "[C] PD PD_PPS" -> "C" (the bracketed one is in use).
+pub fn usb_mode(text: &str) -> String {
+    text.split_whitespace().find_map(|t| t.strip_prefix('[')?.strip_suffix(']')).unwrap_or("").to_string()
 }
 
 fn num(p: &Path) -> Option<f64> {
@@ -123,6 +144,17 @@ pub fn sample() -> Sensors {
                 s.ac = Some(num(&p.join("online")).unwrap_or(0.0) > 0.0);
             } else if kind == "Battery" && read(&p.join("scope").to_string_lossy()).trim() != "Device" {
                 s.batteries.push(battery(&p));
+            } else if kind == "USB" {
+                let name = p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                let port = name.rsplit(':').next().and_then(|n| n.parse::<u32>().ok());
+                let volts = num(&p.join("voltage_now")).unwrap_or(0.0) / 1e6;
+                let amps = num(&p.join("current_now")).unwrap_or(0.0) / 1e6;
+                s.sources.push(PowerSource {
+                    name: port.map_or_else(|| "USB-C".to_string(), |n| format!("USB-C port {n}")),
+                    online: num(&p.join("online")).unwrap_or(0.0) > 0.0,
+                    mode: usb_mode(&read(&p.join("usb_type").to_string_lossy())),
+                    watts: (volts * amps).abs(),
+                });
             }
         }
     }
@@ -165,5 +197,26 @@ fn battery(p: &Path) -> Battery {
         energy_design,
         cycles: num(&p.join("cycle_count")).map(|c| c as u64).filter(|c| *c > 0),
         hours_left,
+        volts,
+        model: [read(&p.join("manufacturer").to_string_lossy()), read(&p.join("model_name").to_string_lossy())]
+            .iter()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+            .join(" "),
+        technology: read(&p.join("technology").to_string_lossy()).trim().to_string(),
+        limit: num(&p.join("charge_control_end_threshold")).filter(|l| *l > 0.0 && *l < 100.0),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_usb_mode() {
+        assert_eq!(usb_mode("[C] PD PD_PPS\n"), "C");
+        assert_eq!(usb_mode("C [PD] PD_PPS"), "PD");
+        assert_eq!(usb_mode(""), "");
     }
 }

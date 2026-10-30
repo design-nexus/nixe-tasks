@@ -3,6 +3,7 @@
 mod actions;
 mod alerts;
 mod apps;
+mod charts;
 mod cmd;
 mod fmt;
 mod graph;

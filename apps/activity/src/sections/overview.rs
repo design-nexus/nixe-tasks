@@ -45,25 +45,19 @@ fn tile(title: &str, target: &'static str, spark: gtk::DrawingArea) -> Tile {
 }
 
 /// Put the chosen tiles into the flow box, in the chosen order.
-fn arrange(flow: &gtk::FlowBox, tiles: &[(&'static str, gtk::Button)]) {
+fn arrange(flow: &gtk::Box, tiles: &[(&'static str, gtk::Button)]) {
     while let Some(c) = flow.first_child() {
-        if let Some(child) = c.downcast_ref::<gtk::FlowBoxChild>() {
-            child.set_child(None::<&gtk::Widget>);
-        }
         flow.remove(&c);
     }
     for id in prefs::get().overview_tiles {
         if let Some((_, b)) = tiles.iter().find(|(t, _)| *t == id) {
             flow.append(b);
-            if let Some(child) = flow.last_child() {
-                child.set_focusable(false);
-            }
         }
     }
 }
 
 /// The tile picker: a check to show each tile, and arrows to move it.
-fn tile_editor(flow: &gtk::FlowBox, tiles: Rc<Vec<(&'static str, gtk::Button)>>) -> gtk::MenuButton {
+fn tile_editor(flow: &gtk::Box, tiles: Rc<Vec<(&'static str, gtk::Button)>>) -> gtk::MenuButton {
     let button = gtk::MenuButton::new();
     button.set_icon_name("document-edit-symbolic");
     button.add_css_class("flat");
@@ -76,7 +70,7 @@ fn tile_editor(flow: &gtk::FlowBox, tiles: Rc<Vec<(&'static str, gtk::Button)>>)
     button.set_popover(Some(&pop));
 
     // Rebuilt after each change, since the order changes.
-    fn fill(list: &gtk::Box, flow: &gtk::FlowBox, tiles: &Rc<Vec<(&'static str, gtk::Button)>>) {
+    fn fill(list: &gtk::Box, flow: &gtk::Box, tiles: &Rc<Vec<(&'static str, gtk::Button)>>) {
         while let Some(c) = list.first_child() {
             list.remove(&c);
         }
@@ -284,13 +278,8 @@ pub fn build(page: &Page) {
     let g = page.group("Usage");
     // The tiles are cards themselves, straight on the page.
     g.list.add_css_class("bare");
-    let flow = gtk::FlowBox::new();
-    flow.set_selection_mode(gtk::SelectionMode::None);
-    flow.set_homogeneous(true);
-    flow.set_min_children_per_line(2);
-    flow.set_max_children_per_line(4);
-    flow.set_row_spacing(10);
-    flow.set_column_spacing(10);
+    // Up to four a line; a short last line stretches, so there's never a gap.
+    let flow = crate::charts::flow_row(&[], 150, 4, true);
     g.add(&flow);
 
     let spark =
@@ -404,22 +393,9 @@ pub fn build(page: &Page) {
 
     // ----- Busiest processes -----
     let g = page.group("Busiest processes");
-    let pair = gtk::FlowBox::new();
-    pair.set_selection_mode(gtk::SelectionMode::None);
-    pair.set_homogeneous(true);
-    pair.set_min_children_per_line(1);
-    pair.set_max_children_per_line(2);
-    pair.set_column_spacing(10);
-    pair.set_row_spacing(10);
     let (c1, first) = top_list(0);
     let (c2, second) = top_list(1);
-    pair.append(&c1);
-    pair.append(&c2);
-    let mut child = pair.first_child();
-    while let Some(c) = child {
-        c.set_focusable(false);
-        child = c.next_sibling();
-    }
+    let pair = crate::charts::row(&[c1.upcast_ref(), c2.upcast_ref()], crate::charts::PAIR);
     g.add(&pair);
     live::on_tick(&pair, move |s| {
         let Some(procs) = &s.procs else { return };

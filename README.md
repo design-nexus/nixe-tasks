@@ -25,15 +25,21 @@ Omarchy theme and fits a half-screen tile.
     kills it. Either needs a second press unless you turn that off in Settings.
     <kbd>←</kbd>/<kbd>→</kbd> close and open branches, and <kbd>/</kbd> filters.
 - **Performance pages:**
-  - **CPU:** total and kernel time, a graph or a shaded tile per thread, clocks, load
-    and the governor.
-  - **Memory:** RAM, cache and swap/zram (with its compression ratio).
-  - **Storage:** each disk's throughput, how busy it is, its temperature, and how full
-    each mount is.
-  - **Network:** traffic per interface, addresses, Wi-Fi network and signal.
-  - **GPU:** Intel/AMD usage from DRM fdinfo and sysfs, and NVIDIA through `nvidia-smi`,
-    plus the processes using each GPU.
-  - **Sensors & Power:** every temperature sensor, fans, and battery charge, draw and health.
+  - **CPU:** where the time goes (user, kernel, I/O wait, interrupts), clocks, load and
+    pressure, the busiest apps and processes, each thread grouped by core type
+    (performance, efficient, low-power) with its clock and temperature, and the
+    processor's caches, power profile and energy preference.
+  - **Memory:** what's using it: apps (each added up from its cgroup), shared memory,
+    the kernel and cache; the apps and processes using the most; swap and zram
+    (with its compression ratio), commit, pressure and swapping over time.
+  - **Storage:** each disk's throughput, requests, response time, temperature and how
+    full each mount is, plus who's reading and writing and how long programs wait.
+  - **Network:** traffic, packets and Wi-Fi signal over time, band, channel and link
+    speed, gateway and DNS, the apps with connections, and what's listening.
+  - **GPU:** Intel/AMD usage per engine from DRM fdinfo and sysfs, clocks, power saving
+    and GPU memory by app; NVIDIA through `nvidia-smi` (only while it's awake).
+  - **Sensors:** every temperature sensor, fans, battery charge, draw and health, the
+    charger, USB-C power and the power profile.
 - **Startup:** what runs at login.
   - Apps from XDG autostart can be turned off with a user override; the system file
     is never touched.

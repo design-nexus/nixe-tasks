@@ -60,6 +60,14 @@ impl Page {
         self.body.append(&wrapper);
         Group { wrapper, list }
     }
+
+    /// A group whose rows are cards straight on the page (see `charts::row`).
+    pub fn cards(&self, title: &str) -> Group {
+        let g = self.group(title);
+        g.list.add_css_class("bare");
+        g.list.set_spacing(10);
+        g
+    }
 }
 
 #[derive(Clone)]
@@ -146,15 +154,6 @@ pub fn set_warn(w: &impl IsA<gtk::Widget>, over: bool) {
     }
 }
 
-/// A usage bar with its own threshold: `danger` when `over`.
-pub fn warn_bar(bar: &gtk::LevelBar, over: bool) {
-    if over {
-        bar.add_css_class("warn");
-    } else {
-        bar.remove_css_class("warn");
-    }
-}
-
 /// A spinner with a line of text, for content that's still loading.
 pub fn loading(text: &str) -> gtk::Box {
     let b = hbox(10);
@@ -212,4 +211,3 @@ pub fn two_click_if(
     });
     b
 }
-

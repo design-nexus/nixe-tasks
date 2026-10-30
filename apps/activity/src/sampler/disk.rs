@@ -6,9 +6,16 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Counters {
+    pub reads: u64,
     pub sectors_read: u64,
+    pub read_ms: u64,
+    pub writes: u64,
     pub sectors_written: u64,
+    pub write_ms: u64,
+    pub in_flight: u64,
     pub io_ms: u64,
+    /// Time requests spent queued or in service, summed over requests.
+    pub weighted_ms: u64,
 }
 
 /// `/proc/diskstats` counters by device name.
@@ -19,8 +26,21 @@ pub fn parse_diskstats(text: &str) -> HashMap<String, Counters> {
             if f.len() < 13 {
                 return None;
             }
-            let n = |i: usize| f[i].parse::<u64>().unwrap_or(0);
-            Some((f[2].to_string(), Counters { sectors_read: n(5), sectors_written: n(9), io_ms: n(12) }))
+            let n = |i: usize| f.get(i).and_then(|v| v.parse::<u64>().ok()).unwrap_or(0);
+            Some((
+                f[2].to_string(),
+                Counters {
+                    reads: n(3),
+                    sectors_read: n(5),
+                    read_ms: n(6),
+                    writes: n(7),
+                    sectors_written: n(9),
+                    write_ms: n(10),
+                    in_flight: n(11),
+                    io_ms: n(12),
+                    weighted_ms: n(13),
+                },
+            ))
         })
         .collect()
 }
@@ -51,9 +71,18 @@ pub struct Disk {
     pub write_bps: f64,
     /// % of the interval the device was busy.
     pub busy: f64,
+    /// Requests completed per second.
+    pub read_iops: f64,
+    pub write_iops: f64,
+    /// Average time a request took, ms.
+    pub latency_ms: f64,
+    /// Average number of requests queued or in service.
+    pub queue: f64,
     pub read_total: u64,
     pub written_total: u64,
     pub temp: Option<f64>,
+    pub firmware: String,
+    pub transport: String,
     pub mounts: Vec<Mount>,
 }
 
@@ -134,10 +163,20 @@ fn nvme_temp(disk: &str) -> Option<f64> {
     read(&hw.path().join("temp1_input").to_string_lossy()).trim().parse::<f64>().ok().map(|v| v / 1000.0)
 }
 
+#[derive(Debug, Clone, Default)]
+struct Info {
+    model: String,
+    size: u64,
+    rotational: bool,
+    removable: bool,
+    firmware: String,
+    transport: String,
+}
+
 pub struct DiskSampler {
     prev: HashMap<String, Counters>,
     names: Vec<String>,
-    info: HashMap<String, (String, u64, bool, bool)>,
+    info: HashMap<String, Info>,
     tick: u64,
     mounts: Vec<(String, String, String, Vec<String>)>,
     temps: HashMap<String, Option<f64>>,
@@ -164,7 +203,30 @@ impl DiskSampler {
                 let size = read(&format!("{base}/size")).trim().parse::<u64>().unwrap_or(0) * 512;
                 let rota = read(&format!("{base}/queue/rotational")).trim() == "1";
                 let removable = read(&format!("{base}/removable")).trim() == "1";
-                (if model.is_empty() { n.clone() } else { model }, size, rota, removable)
+                let firmware = [format!("{base}/device/firmware_rev"), format!("{base}/device/rev")]
+                    .iter()
+                    .map(|p| read(p).trim().to_string())
+                    .find(|v| !v.is_empty())
+                    .unwrap_or_default();
+                let transport = match read(&format!("{base}/device/transport")).trim() {
+                    "pcie" => "PCIe".to_string(),
+                    "" if n.starts_with("sd") => {
+                        if std::fs::canonicalize(format!("{base}/device")).is_ok_and(|p| p.to_string_lossy().contains("/usb")) {
+                            "USB".into()
+                        } else {
+                            "SATA".into()
+                        }
+                    }
+                    t => t.to_uppercase(),
+                };
+                Info {
+                    model: if model.is_empty() { n.clone() } else { model },
+                    size,
+                    rotational: rota,
+                    removable,
+                    firmware,
+                    transport,
+                }
             });
         }
         self.mounts = parse_mounts(&read("/proc/mounts"))
@@ -191,13 +253,15 @@ impl DiskSampler {
         let mut out = Vec::new();
         for n in &self.names {
             let Some(now) = stats.get(n) else { continue };
-            let (model, size, rotational, removable) = self.info.get(n).cloned().unwrap_or_default();
+            let info = self.info.get(n).cloned().unwrap_or_default();
             let mut d = Disk {
                 name: n.clone(),
-                model,
-                size,
-                rotational,
-                removable,
+                model: info.model,
+                size: info.size,
+                rotational: info.rotational,
+                removable: info.removable,
+                firmware: info.firmware,
+                transport: info.transport,
                 read_total: now.sectors_read * 512,
                 written_total: now.sectors_written * 512,
                 temp: self.temps.get(n).copied().flatten(),
@@ -206,9 +270,17 @@ impl DiskSampler {
             if let Some(prev) = self.prev.get(n)
                 && elapsed > 0.0
             {
-                d.read_bps = now.sectors_read.saturating_sub(prev.sectors_read) as f64 * 512.0 / elapsed;
-                d.write_bps = now.sectors_written.saturating_sub(prev.sectors_written) as f64 * 512.0 / elapsed;
-                d.busy = (now.io_ms.saturating_sub(prev.io_ms) as f64 / (elapsed * 1000.0) * 100.0).clamp(0.0, 100.0);
+                let delta = |a: u64, b: u64| a.saturating_sub(b) as f64;
+                d.read_bps = delta(now.sectors_read, prev.sectors_read) * 512.0 / elapsed;
+                d.write_bps = delta(now.sectors_written, prev.sectors_written) * 512.0 / elapsed;
+                d.busy = (delta(now.io_ms, prev.io_ms) / (elapsed * 1000.0) * 100.0).clamp(0.0, 100.0);
+                let (reads, writes) = (delta(now.reads, prev.reads), delta(now.writes, prev.writes));
+                d.read_iops = reads / elapsed;
+                d.write_iops = writes / elapsed;
+                if reads + writes > 0.0 {
+                    d.latency_ms = (delta(now.read_ms, prev.read_ms) + delta(now.write_ms, prev.write_ms)) / (reads + writes);
+                }
+                d.queue = delta(now.weighted_ms, prev.weighted_ms) / (elapsed * 1000.0);
             }
             d.mounts = self
                 .mounts
@@ -235,9 +307,14 @@ mod tests {
         let text = " 259       0 nvme0n1 473 0 27469 62 10 0 800 5 0 33 62 0 0 0 0 0 0\n";
         let s = parse_diskstats(text);
         let c = s["nvme0n1"];
+        assert_eq!(c.reads, 473);
         assert_eq!(c.sectors_read, 27469);
+        assert_eq!(c.read_ms, 62);
+        assert_eq!(c.writes, 10);
         assert_eq!(c.sectors_written, 800);
+        assert_eq!(c.write_ms, 5);
         assert_eq!(c.io_ms, 33);
+        assert_eq!(c.weighted_ms, 62);
     }
 
     #[test]

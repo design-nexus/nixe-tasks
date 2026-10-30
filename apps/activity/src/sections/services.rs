@@ -1,6 +1,8 @@
+use crate::charts::{self, Bar, PAIR};
+use crate::sampler::groups::Kind;
 use crate::startup::{self, Timer, Unit};
 use crate::widgets::{self, Page};
-use crate::{cmd, fmt, prefs, window};
+use crate::{cmd, fmt, live, prefs, window};
 use gtk::prelude::*;
 use gtk::{gio, glib, pango};
 use std::cell::{Cell, RefCell};
@@ -41,11 +43,61 @@ struct State {
     entries: RefCell<HashMap<String, Entry>>,
     /// Rows by unit name, kept between refreshes so the list doesn't jump.
     rows: RefCell<HashMap<String, gtk::ListBoxRow>>,
+    /// Each row's memory figure, refreshed in place.
+    mem_labels: RefCell<HashMap<String, gtk::Label>>,
     loading: Cell<bool>,
     list: gtk::ListBox,
     stack: gtk::Stack,
     banner: gtk::Box,
     count: gtk::Label,
+    states: charts::StackBar,
+    memory: charts::BarList,
+    memory_sum: gtk::Label,
+}
+
+/// Memory each unit's cgroup holds, from the last sample (services only).
+fn unit_memory(user: bool) -> HashMap<String, u64> {
+    let Some(snap) = live::latest() else { return HashMap::new() };
+    snap.groups
+        .iter()
+        .filter(|g| g.kind == Kind::Service && g.path.contains("/user@") == user)
+        .map(|g| (g.unit.clone(), g.memory()))
+        .collect()
+}
+
+/// The running / failed / stopped split and the hungriest services.
+fn refresh_summary(st: &State) {
+    let entries = st.entries.borrow();
+    let running = entries.values().filter(|e| e.unit.running()).count();
+    let failed = entries.values().filter(|e| e.unit.failed()).count();
+    let stopped = entries.len().saturating_sub(running + failed);
+    let parts = [running as f64, failed as f64, stopped as f64];
+    st.states.set(&parts, (entries.len() as f64).max(1.0), &parts.map(|v| (v as u64).to_string()));
+
+    let mem = unit_memory(st.user.get());
+    for (name, label) in st.mem_labels.borrow().iter() {
+        let text = mem.get(name).map(|m| fmt::bytes(*m as f64)).unwrap_or_default();
+        if label.text() != text {
+            label.set_text(&text);
+        }
+    }
+    let mut top: Vec<(&String, &u64)> = mem.iter().collect();
+    top.sort_by(|a, b| b.1.cmp(a.1));
+    let max = top.first().map_or(1, |t| *t.1).max(1) as f64;
+    let bars: Vec<Bar> = top
+        .iter()
+        .take(4)
+        .map(|(unit, m)| Bar {
+            name: pretty_name(unit),
+            frac: **m as f64 / max,
+            value: fmt::bytes(**m as f64),
+            tip: unit.to_string(),
+            ..Default::default()
+        })
+        .collect();
+    st.memory.set(&bars);
+    let total: u64 = mem.values().sum();
+    st.memory_sum.set_text(&if total > 0 { format!("{} in all", fmt::bytes(total as f64)) } else { String::new() });
 }
 
 fn load(st: &Rc<State>, quiet: bool) {
@@ -111,6 +163,7 @@ fn populate(st: &Rc<State>, entries: Vec<Entry>) {
             let keep = names.contains(name.as_str());
             if !keep {
                 st.list.remove(row);
+                st.mem_labels.borrow_mut().remove(name);
             }
             keep
         });
@@ -135,6 +188,7 @@ fn populate(st: &Rc<State>, entries: Vec<Entry>) {
     *st.entries.borrow_mut() = entries.into_iter().map(|e| (e.unit.name.clone(), e)).collect();
     st.list.invalidate_filter();
     refresh_count(st);
+    refresh_summary(st);
 }
 
 fn refresh_count(st: &State) {
@@ -143,7 +197,12 @@ fn refresh_count(st: &State) {
     if st.loading.get() && entries.is_empty() {
         return;
     }
-    st.count.set_text(&format!("{shown} of {}", entries.len()));
+    let what = if st.timers.get() { "timers" } else { "services" };
+    st.count.set_text(&if shown == entries.len() {
+        format!("{shown} {what}")
+    } else {
+        format!("{shown} of {} {what} shown", entries.len())
+    });
     st.stack.set_visible_child_name(if shown == 0 { "empty" } else { "list" });
 }
 
@@ -187,8 +246,13 @@ fn run_systemctl(user: bool, verb: &str, unit: &str, after: impl FnOnce() + 'sta
     });
 }
 
+/// "app-dropbox@autostart.service" -> "dropbox (autostart)"; "foo.service" -> "foo".
 fn pretty_name(unit: &str) -> String {
-    startup::unescape(unit.trim_end_matches(".service"))
+    let u = unit.trim_end_matches(".service");
+    match u.strip_prefix("app-").and_then(|s| s.strip_suffix("@autostart")) {
+        Some(app) => format!("{} (autostart)", startup::unescape(app)),
+        None => startup::unescape(u),
+    }
 }
 
 /// The verbs that make sense for a unit in its current state.
@@ -208,23 +272,31 @@ fn verbs(u: &Unit) -> Vec<(&'static str, &'static str)> {
     v
 }
 
+/// One line per unit: state dot, name, what it is, memory, start-at-boot, actions.
 fn row_content(st: &Rc<State>, e: &Entry) -> gtk::Box {
     let u = &e.unit;
     let row = widgets::hbox(12);
-    row.add_css_class("settings-option");
-    let text = widgets::vbox(2);
-    text.set_hexpand(true);
-    text.set_valign(gtk::Align::Center);
-    let head = widgets::hbox(8);
-    let t = widgets::label(&pretty_name(&u.name), "settings-option-title");
-    t.set_ellipsize(pango::EllipsizeMode::End);
-    t.set_tooltip_text(Some(&u.name));
-    head.append(&t);
-    head.append(&state_tag(u, e.timer.is_some()));
-    if !u.file_state.is_empty() {
-        head.append(&widgets::tag(&u.file_state, ""));
+    row.add_css_class("service-row");
+    let dot = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    dot.add_css_class("state-dot");
+    if u.failed() {
+        dot.add_css_class("failed");
+    } else if u.running() {
+        dot.add_css_class("running");
     }
-    text.append(&head);
+    dot.set_valign(gtk::Align::Center);
+    let state = state_tag(u, e.timer.is_some()).text();
+    dot.set_tooltip_text(Some(&state));
+    row.append(&dot);
+    // Name and description share the row's middle equally, so they line up as columns.
+    let cols = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    cols.set_homogeneous(true);
+    cols.set_hexpand(true);
+    let t = widgets::label(&pretty_name(&u.name), "service-name");
+    t.set_ellipsize(pango::EllipsizeMode::End);
+    t.set_width_chars(12);
+    cols.append(&t);
+    row.append(&cols);
     let desc = match &e.timer {
         Some(t) => {
             let now = glib::real_time() as f64 / 1e6;
@@ -234,13 +306,29 @@ fn row_content(st: &Rc<State>, e: &Entry) -> gtk::Box {
         }
         None => u.description.clone(),
     };
-    if !desc.is_empty() {
-        let d = widgets::label(&desc, "settings-option-description");
-        d.set_ellipsize(pango::EllipsizeMode::End);
-        d.set_tooltip_text(Some(&desc));
-        text.append(&d);
+    let d = widgets::label(&desc, "cell-dim");
+    d.set_ellipsize(pango::EllipsizeMode::End);
+    cols.append(&d);
+    row.set_tooltip_text(Some(&format!(
+        "{}\n{state}{}",
+        u.name,
+        if desc.is_empty() { String::new() } else { format!(" · {desc}") }
+    )));
+    let mem = widgets::label("", "cell-dim");
+    mem.add_css_class("tnum");
+    mem.set_width_chars(9);
+    mem.set_xalign(1.0);
+    mem.set_tooltip_text(Some("Memory it holds"));
+    row.append(&mem);
+    st.mem_labels.borrow_mut().insert(u.name.clone(), mem);
+    let boot = widgets::label(if u.file_state.is_empty() { "–" } else { &u.file_state }, "cell-dim");
+    boot.set_width_chars(10);
+    boot.set_xalign(0.0);
+    boot.set_tooltip_text(Some("Starts at boot when enabled"));
+    if u.file_state == "enabled" {
+        boot.remove_css_class("cell-dim");
     }
-    row.append(&text);
+    row.append(&boot);
 
     let menu = gtk::MenuButton::new();
     menu.set_icon_name("view-more-symbolic");
@@ -634,44 +722,50 @@ fn show_logs(unit: &str, user: bool) {
 
 pub fn build(page: &Page) {
     let p = prefs::get();
-    let toolbar = widgets::vbox(10);
+    // One row: what, whose, which, then the filter.
+    let toolbar = widgets::hbox(8);
     toolbar.add_css_class("toolbar");
-    toolbar.add_css_class("stacked");
-    let chips = gtk::FlowBox::new();
-    chips.set_selection_mode(gtk::SelectionMode::None);
-    chips.set_column_spacing(14);
-    chips.set_row_spacing(6);
-    chips.set_max_children_per_line(3);
-    chips.set_homogeneous(false);
-    let kind_box = widgets::hbox(6);
-    let scope_box = widgets::hbox(6);
-    let show_box = widgets::hbox(6);
-    for b in [&kind_box, &scope_box, &show_box] {
-        chips.append(b);
-    }
-    let mut child = chips.first_child();
-    while let Some(c) = child {
-        c.set_focusable(false);
-        c.set_halign(gtk::Align::Start);
-        child = c.next_sibling();
-    }
-    toolbar.append(&chips);
-    let row = widgets::hbox(8);
+    toolbar.add_css_class("table-toolbar");
+    let kind_box = widgets::hbox(4);
+    let scope = widgets::dropdown(&widgets::opts(&[("user", "Yours"), ("system", "System")]), &p.services_scope);
+    scope.add_css_class("compact");
+    scope.set_tooltip_text(Some("Your user services, or the system's"));
+    let status = widgets::dropdown(
+        &widgets::opts(&[("all", "Any state"), ("running", "Running"), ("failed", "Failed")]),
+        &p.services_show,
+    );
+    status.add_css_class("compact");
+    status.set_tooltip_text(Some("Show only running or failed units"));
     let search = gtk::SearchEntry::new();
-    search.set_placeholder_text(Some("Filter by name or description"));
+    search.set_placeholder_text(Some("Filter"));
+    search.set_tooltip_text(Some("Filter by name or description"));
     search.set_hexpand(true);
-    let count = widgets::label("", "dim");
-    count.add_css_class("tnum");
-    row.append(&search);
-    row.append(&count);
+    search.set_width_chars(6);
     let refresh = gtk::Button::from_icon_name("view-refresh-symbolic");
+    refresh.add_css_class("flat");
     refresh.set_tooltip_text(Some("Refresh (it also refreshes by itself every few seconds)"));
-    row.append(&refresh);
-    toolbar.append(&row);
+    toolbar.append(&kind_box);
+    toolbar.append(&scope);
+    toolbar.append(&status);
+    toolbar.append(&search);
+    toolbar.append(&refresh);
     page.body.append(&toolbar);
+
+    // ----- Summary -----
+    let states = charts::stack_bar(&["Running", "Failed", "Stopped"], None);
+    // Its summary is the list's count ("12 of 106").
+    let (states_card, count) = charts::card("State", &states.root);
+    let memory = charts::bar_list(4, "No memory reading yet.", false);
+    let (memory_card, memory_sum) = charts::card("Using the most memory", &memory.root);
+    let summary = charts::row(&[states_card.upcast_ref(), memory_card.upcast_ref()], PAIR);
+    summary.add_css_class("services-summary");
+    page.body.append(&summary);
 
     let banner = widgets::banner("", true);
     banner.set_visible(false);
+    banner.set_margin_start(20);
+    banner.set_margin_end(16);
+    banner.set_margin_bottom(12);
     page.body.append(&banner);
 
     let list = gtk::ListBox::new();
@@ -709,11 +803,15 @@ pub fn build(page: &Page) {
         query: RefCell::new(String::new()),
         entries: RefCell::new(HashMap::new()),
         rows: RefCell::new(HashMap::new()),
+        mem_labels: RefCell::new(HashMap::new()),
         loading: Cell::new(false),
         list: list.clone(),
         stack: stack.clone(),
         banner,
         count,
+        states,
+        memory,
+        memory_sum,
     });
 
     let s2 = st.clone();
@@ -752,6 +850,7 @@ pub fn build(page: &Page) {
         for row in st.rows.borrow_mut().drain().map(|(_, r)| r) {
             st.list.remove(&row);
         }
+        st.mem_labels.borrow_mut().clear();
         st.entries.borrow_mut().clear();
         st.stack.set_visible_child_name("loading");
         load(st, false);
@@ -765,30 +864,28 @@ pub fn build(page: &Page) {
         }) as Rc<dyn Fn()>
     };
     chip_group(&kind_box, vec![("Services", kind(false)), ("Timers", kind(true))], st.timers.get() as usize);
-    let scope = |user: bool| {
-        let s = st.clone();
-        Rc::new(move || {
-            s.user.set(user);
-            prefs::update(|p| p.services_scope = if user { "user" } else { "system" }.into());
-            reset(&s);
-        }) as Rc<dyn Fn()>
-    };
-    chip_group(&scope_box, vec![("User", scope(true)), ("System", scope(false))], (!st.user.get()) as usize);
-    let mk = |show: Show| {
-        let s = st.clone();
-        Rc::new(move || {
-            s.show.set(show);
-            prefs::update(|p| p.services_show = show.id().into());
-            s.list.invalidate_filter();
-            refresh_count(&s);
-        }) as Rc<dyn Fn()>
-    };
-    let selected = match show {
-        Show::All => 0,
-        Show::Running => 1,
-        Show::Failed => 2,
-    };
-    chip_group(&show_box, vec![("All", mk(Show::All)), ("Running", mk(Show::Running)), ("Failed", mk(Show::Failed))], selected);
+    let s = st.clone();
+    scope.connect_selected_notify(move |d| {
+        let user = d.selected() == 0;
+        if s.user.get() == user {
+            return;
+        }
+        s.user.set(user);
+        prefs::update(|p| p.services_scope = if user { "user" } else { "system" }.into());
+        reset(&s);
+    });
+    let s = st.clone();
+    status.connect_selected_notify(move |d| {
+        let show = match d.selected() {
+            1 => Show::Running,
+            2 => Show::Failed,
+            _ => Show::All,
+        };
+        s.show.set(show);
+        prefs::update(|p| p.services_show = show.id().into());
+        s.list.invalidate_filter();
+        refresh_count(&s);
+    });
 
     let s2 = st.clone();
     search.connect_search_changed(move |e| {

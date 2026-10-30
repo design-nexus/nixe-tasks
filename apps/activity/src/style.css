@@ -291,6 +291,85 @@ window.activity-window button.stat-tile:hover {
 
 .core-tile.heat-5 { background: mix(@theme_card, @theme_accent, 0.52); }
 
+/* ---------- Charts ---------- */
+
+.card-row,
+.card-row > flowboxchild {
+  padding: 0;
+  background: transparent;
+}
+
+.stat-card {
+  padding: 12px 14px 10px;
+  min-width: 120px;
+}
+
+.ring-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: @theme_text;
+}
+
+.ring-value.small {
+  font-size: 14px;
+}
+
+.ring-sub {
+  font-size: 11px;
+  color: @theme_dim_text;
+}
+
+.chart-legend {
+  font-size: 12.5px;
+}
+
+.bar-list {
+  margin: 0 -6px;
+}
+
+window.activity-window button.bar-row {
+  min-height: 28px;
+  padding: 0 6px;
+  border-radius: var(--nyx-radius-small);
+  background: transparent;
+  box-shadow: none;
+}
+
+window.activity-window button.bar-row:not(.clickable):hover {
+  background: transparent;
+}
+
+.bar-name {
+  font-size: 12.5px;
+  color: @theme_text;
+}
+
+.bar-value {
+  font-size: 12.5px;
+  color: @theme_dim_text;
+}
+
+.subgroup-title {
+  margin: 6px 2px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: @theme_dim_text;
+}
+
+.settings-option.startup-row,
+.settings-option.service-row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.port-row {
+  min-height: 26px;
+}
+
+.spec-card .kv-key {
+  font-size: 11px;
+}
+
 /* ---------- Key figures ---------- */
 
 .kv-key {
@@ -457,9 +536,65 @@ window.activity-window list.table-card {
   color: @theme_text;
 }
 
+window.activity-window list.service-list {
+  margin: 0 16px 12px 20px;
+  padding: 4px;
+  border-radius: var(--nyx-radius-card);
+  background: @theme_card;
+}
+
 window.activity-window list.service-list > row {
-  padding: 0 0 6px;
+  padding: 0;
+  border-radius: var(--nyx-radius-small);
   background: transparent;
+}
+
+window.activity-window list.service-list > row:hover {
+  background: @row_hover;
+}
+
+.service-row {
+  min-height: 36px;
+  padding: 0 6px 0 12px;
+}
+
+window.activity-window .service-row menubutton > button {
+  min-height: 28px;
+  min-width: 28px;
+  background: transparent;
+  box-shadow: none;
+}
+
+window.activity-window .service-row menubutton > button:hover {
+  background: @row_hover;
+}
+
+.service-name {
+  font-weight: 500;
+  color: @theme_text;
+}
+
+.state-dot {
+  min-width: 8px;
+  min-height: 8px;
+  border-radius: 999px;
+  background: alpha(@theme_text, 0.22);
+}
+
+.state-dot.running {
+  background: @theme_accent;
+}
+
+.state-dot.failed {
+  background: @theme_danger;
+}
+
+.services-summary {
+  margin: 4px 16px 12px 20px;
+}
+
+window.activity-window dropdown.compact > button {
+  min-width: 0;
 }
 
 window.activity-window list.table-card > row {
