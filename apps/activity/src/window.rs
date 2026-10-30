@@ -5,10 +5,10 @@
 
 use crate::sections::{self, Section};
 use crate::widgets;
-use crate::{fmt, live, prefs, settings_dialog, theme};
+use crate::{live, prefs, settings_dialog, theme};
 use gtk::prelude::*;
-use nyx_ui::chrome;
 use gtk::{gdk, glib};
+use nyx_ui::chrome;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -27,8 +27,6 @@ struct Ui {
     /// Holds the current page's "open the config file" button.
     edit: gtk::Box,
     header: chrome::AppHeader,
-    /// Processes, CPU and memory, at the header's end.
-    readout: gtk::Label,
 }
 
 thread_local! {
@@ -86,7 +84,15 @@ fn build(app: &gtk::Application) {
     window.add_css_class("activity-window");
     // No client-side titlebar: Hyprland manages the window.
     window.set_titlebar(Some(&gtk::Box::new(gtk::Orientation::Horizontal, 0)));
-    nyx_ui::keys::install(&window, nyx_ui::keys::Common { settings: Some(settings_dialog::open), shortcuts: Some(show_shortcuts), close: false, palette: Some(crate::palette::open) });
+    nyx_ui::keys::install(
+        &window,
+        nyx_ui::keys::Common {
+            settings: Some(settings_dialog::open),
+            shortcuts: Some(show_shortcuts),
+            close: false,
+            palette: Some(crate::palette::open),
+        },
+    );
     window.set_icon_name(Some("io.github.design_nexus.nyx.Activity"));
 
     let sections = sections::all();
@@ -167,8 +173,6 @@ fn build(app: &gtk::Application) {
     collapse.connect_clicked(|_| toggle_sidebar());
     header.start.append(&collapse);
     header.end.set_spacing(4);
-    let readout = header_readout();
-    header.end.append(&readout);
     header.end.append(&pause_button());
     // The page's config files, beside search and settings.
     let edit = widgets::hbox(0);
@@ -315,7 +319,6 @@ fn build(app: &gtk::Application) {
         overlay,
         edit,
         header,
-        readout,
     };
     UI.with(|u| *u.borrow_mut() = Some(Rc::new(RefCell::new(ui))));
 }
@@ -339,26 +342,6 @@ fn find() {
     } else {
         crate::palette::open();
     }
-}
-
-/// Processes, CPU and memory, kept current.
-fn header_readout() -> gtk::Label {
-    let readout = widgets::label("", "header-status");
-    readout.set_ellipsize(gtk::pango::EllipsizeMode::Start);
-    readout.set_margin_end(6);
-    let r = readout.clone();
-    live::on_tick(&readout, move |snap| {
-        let mut parts = Vec::new();
-        if snap.process_count > 0 {
-            parts.push(format!("{} processes", snap.process_count));
-        }
-        parts.push(format!("CPU {}", fmt::pct(snap.cpu.usage)));
-        if snap.mem.total > 0 {
-            parts.push(format!("Memory {}", fmt::pct(snap.mem.used as f64 / snap.mem.total as f64 * 100.0)));
-        }
-        r.set_text(&parts.join(" · "));
-    });
-    readout
 }
 
 /// Every keyboard shortcut, for the shortcuts dialog and Settings.
@@ -454,8 +437,7 @@ pub fn toggle_sidebar() {
     apply_compact(NARROW.with(|n| n.get()) || prefs::get().sidebar_collapsed);
 }
 
-/// Narrow windows (a tiled half-screen) mark their pages, and get no readout in the
-/// header.
+/// Mark pages for a narrow tiled window.
 fn set_narrow(narrow: bool) {
     NARROW.with(|n| n.set(narrow));
     let Some(ui) = ui() else { return };
@@ -463,7 +445,6 @@ fn set_narrow(narrow: bool) {
     for page in u.pages.values() {
         mark_page(page, narrow);
     }
-    u.readout.set_visible(!narrow);
 }
 
 fn mark_page(page: &gtk::ScrolledWindow, narrow: bool) {

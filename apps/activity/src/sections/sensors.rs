@@ -47,27 +47,17 @@ fn temperatures(page: &Page, snap: &Snapshot) {
         return;
     }
 
-    // ----- A ring per chip -----
+    // Compact temperatures leave the history charts as the main visualization.
     let chips: Vec<String> = hottest_by_chip(snap).iter().map(|t| t.chip.clone()).take(6).collect();
-    let mut rings = Vec::new();
+    let mut readings = Vec::new();
     let mut cards: Vec<gtk::Widget> = Vec::new();
     for chip in &chips {
-        let card = widgets::vbox(8);
-        card.add_css_class("graph-card");
-        let ring = charts::ring(88);
-        card.append(&ring.root);
-        let name = widgets::label(chip, "graph-card-title");
-        name.set_xalign(0.5);
-        name.set_ellipsize(gtk::pango::EllipsizeMode::End);
-        card.append(&name);
-        let sub = widgets::label("", "stat-sub");
-        sub.set_xalign(0.5);
-        card.append(&sub);
-        cards.push(card.clone().upcast());
-        rings.push((chip.clone(), ring, sub, card));
+        let reading = charts::tile(chip);
+        cards.push(reading.root.clone().upcast());
+        readings.push((chip.clone(), reading));
     }
     let refs: Vec<&gtk::Widget> = cards.iter().collect();
-    g.add(&charts::row(&refs, 130));
+    g.add(&charts::row(&refs, 150));
 
     // ----- History: the CPU, and the two hottest other sensors -----
     let cpu_graph = graph::graph(vec![Series::new("temp.cpu", "CPU", Tone::Accent)], Scale::Auto { floor: 60.0 }, fmt::temp, 120);
@@ -97,20 +87,25 @@ fn temperatures(page: &Page, snap: &Snapshot) {
     let right = charts::bar_list(half, "", false);
     let (lc, all_sum) = charts::card("All sensors", &left.root);
     let (rc, _) = charts::card("", &right.root);
-    g.add(&charts::row(&[lc.upcast_ref(), rc.upcast_ref()], PAIR));
+    g.add(&widgets::disclosure(
+        "sensors.temperatures",
+        "All temperature sensors",
+        &charts::row(&[lc.upcast_ref(), rc.upcast_ref()], PAIR),
+    ));
 
-    live::on_tick(&lc, move |s| {
+    live::on_tick(&g.list, move |s| {
         let warn_at = prefs::get().warn_temp;
-        for (chip, ring, sub, card) in &rings {
+        for (chip, reading) in &readings {
             let Some(t) = s.sensors.temps.iter().filter(|t| &t.chip == chip).max_by(|a, b| a.value.total_cmp(&b.value)) else {
                 continue;
             };
-            ring.set((t.value / limit(t)).clamp(0.0, 1.0), &fmt::temp(t.value), "", t.value >= warn_at);
-            sub.set_text(&match t.high {
+            reading.value.set_text(&fmt::temp(t.value));
+            widgets::set_warn(&reading.value, t.value >= warn_at);
+            reading.sub.set_text(&match t.high {
                 Some(h) => format!("{} · limit {}", t.label, fmt::temp(h)),
                 None => t.label.clone(),
             });
-            card.set_tooltip_text(Some(&format!("{chip}: hottest reading is {} ({})", fmt::temp(t.value), t.label)));
+            reading.root.set_tooltip_text(Some(&format!("{chip}: hottest reading is {} ({})", fmt::temp(t.value), t.label)));
         }
         cpu_sum.set_text(&s.sensors.cpu_temp.map(fmt::temp).unwrap_or_default());
         widgets::set_warn(&cpu_sum, s.sensors.cpu_temp.is_some_and(|t| t >= warn_at));
@@ -156,7 +151,8 @@ fn fans(page: &Page, snap: &Snapshot) {
     let (graph_card, graph_sum) = charts::card("Speed", &gr.root);
     let list = charts::bar_list(snap.sensors.fans.len().max(1), "", false);
     let (list_card, _) = charts::card("Each fan", &list.root);
-    g.add(&charts::row(&[graph_card.upcast_ref(), list_card.upcast_ref()], PAIR));
+    g.add(&graph_card);
+    g.add(&widgets::disclosure("sensors.fans", "Individual fans", &list_card));
     live::on_tick(&graph_card, move |s| {
         let max = s.sensors.fans.iter().map(|f| f.value).fold(6000.0, f64::max);
         let bars: Vec<Bar> = s
@@ -187,7 +183,7 @@ fn battery(page: &Page, name: &str) {
     );
     let gr = graph::graph(vec![Series::new(format!("bat.{name}"), "Charge", Tone::Accent)], Scale::Percent, fmt::pct, 130);
     let (hist, _) = charts::card("Charge over time", &gr.root);
-    g.add(&charts::row(&[charge.upcast_ref(), hist.upcast_ref()], PAIR));
+    g.add(&charts::primary(&charge, &hist));
 
     let gr = graph::graph(
         vec![Series::new(format!("bat.{name}.watts"), "Power", Tone::Accent)],
@@ -196,12 +192,15 @@ fn battery(page: &Page, name: &str) {
         120,
     );
     let (draw, draw_sum) = charts::card("Power draw", &gr.root);
-    let (health, health_sum, health_ring, hv) = charts::ring_card(
-        "Health",
-        120,
-        &[("Holds now", None), ("When new", None), ("Cycles", None), ("Voltage", None), ("Model", None)],
-    );
-    g.add(&charts::row(&[draw.upcast_ref(), health.upcast_ref()], PAIR));
+    let health_body = widgets::vbox(12);
+    let health_value = widgets::label("–", "stat-value");
+    health_body.append(&health_value);
+    let (legend, hv) =
+        charts::legend(&[("Holds now", None), ("When new", None), ("Cycles", None), ("Voltage", None), ("Model", None)]);
+    health_body.append(&legend);
+    let (health, health_sum) = charts::card("Health", &health_body);
+    let diagnostics = charts::row(&[draw.upcast_ref(), health.upcast_ref()], PAIR);
+    g.add(&widgets::disclosure(&format!("sensors.battery.{name}"), "Battery health and power history", &diagnostics));
 
     live::on_tick(&charge, move |s| {
         let Some(b) = s.sensors.batteries.iter().find(|x| x.name == name) else { return };
@@ -224,7 +223,8 @@ fn battery(page: &Page, name: &str) {
         });
         match b.health() {
             Some(h) => {
-                health_ring.set((h / 100.0).min(1.0), &fmt::pct(h), "of new", h < 70.0);
+                health_value.set_text(&format!("{} of original capacity", fmt::pct(h)));
+                widgets::set_warn(&health_value, h < 70.0);
                 health_sum.set_text(if h >= 80.0 {
                     "Good"
                 } else if h >= 60.0 {
@@ -233,7 +233,10 @@ fn battery(page: &Page, name: &str) {
                     "Replace soon"
                 });
             }
-            None => health_ring.set(0.0, "–", "", false),
+            None => {
+                health_value.set_text("–");
+                health_sum.set_text("Not available");
+            }
         }
         hv[0].set_text(&format!("{:.1} Wh", b.energy_full));
         hv[1].set_text(&if b.energy_design > 0.0 { format!("{:.1} Wh", b.energy_design) } else { "–".into() });
@@ -247,15 +250,15 @@ fn battery(page: &Page, name: &str) {
 
 fn power(page: &Page, snap: &Snapshot) {
     let g = page.cards("Power");
-    let charger = charts::tile("Charger", None);
-    let profile = charts::tile("Power profile", None);
+    let charger = charts::tile("Charger");
+    let profile = charts::tile("Power profile");
     let mut tiles: Vec<gtk::Widget> = vec![charger.root.clone().upcast(), profile.root.clone().upcast()];
     let ports: Vec<(String, charts::Tile)> = snap
         .sensors
         .sources
         .iter()
         .map(|p| {
-            let t = charts::tile(&p.name, None);
+            let t = charts::tile(&p.name);
             tiles.push(t.root.clone().upcast());
             (p.name.clone(), t)
         })

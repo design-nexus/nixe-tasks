@@ -101,18 +101,14 @@ fn draw_lines(cr: &cairo::Context, w: f64, h: f64, cap: usize, data: &[(Vec<f64>
         let n = values.len();
         let x0 = w - (n - 1) as f64 * step;
         let c = tone.rgb();
-        if !*dashed {
+        if !*dashed && i == 0 {
             cr.move_to(x0, h);
             for (j, v) in values.iter().enumerate() {
                 cr.line_to(x0 + j as f64 * step, y(*v));
             }
             cr.line_to(w, h);
             cr.close_path();
-            let grad = cairo::LinearGradient::new(0.0, 0.0, 0.0, h);
-            let top = if i == 0 { 0.26 } else { 0.14 };
-            grad.add_color_stop_rgba(0.0, c.0, c.1, c.2, top);
-            grad.add_color_stop_rgba(1.0, c.0, c.1, c.2, 0.02);
-            let _ = cr.set_source(&grad);
+            set(cr, c, 0.07);
             let _ = cr.fill();
         }
         for (j, v) in values.iter().enumerate() {

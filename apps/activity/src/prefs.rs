@@ -44,6 +44,9 @@ pub struct Prefs {
     pub overview_top: Vec<String>,
     /// The CPU page shows each thread as a small tile instead of a graph.
     pub cpu_grid: bool,
+    /// Expanded diagnostic groups and selected consumer views, keyed by page/device.
+    pub expanded_groups: std::collections::HashMap<String, bool>,
+    pub consumer_views: std::collections::HashMap<String, String>,
     /// Warning thresholds: CPU temperature (°C), memory use and disk fullness (%).
     pub warn_temp: f64,
     pub warn_mem: f64,
@@ -90,6 +93,8 @@ impl Default for Prefs {
             overview_tiles: ["cpu", "mem", "gpu", "disk", "net", "temp", "bat"].map(String::from).to_vec(),
             overview_top: vec!["cpu".into(), "mem".into()],
             cpu_grid: false,
+            expanded_groups: Default::default(),
+            consumer_views: Default::default(),
             warn_temp: 85.0,
             warn_mem: 90.0,
             warn_disk: 95.0,
@@ -108,4 +113,3 @@ impl Default for Prefs {
 }
 
 nyx_core::prefs_store!(Prefs);
-

@@ -113,7 +113,7 @@ enum Col {
 }
 
 const COLUMNS: &[(Col, &str, &str, i32)] = &[
-    (Col::Name, "name", "Name", 0),
+    (Col::Name, "name", "Name", 360),
     (Col::Pid, "pid", "PID", 78),
     (Col::User, "user", "User", 84),
     // Wide enough for the totals in their titles ("CPU 23%").
@@ -1643,7 +1643,7 @@ pub fn build(page: &Page) {
     }
 
     let scroll = gtk::ScrolledWindow::builder()
-        .hscrollbar_policy(gtk::PolicyType::Never)
+        .hscrollbar_policy(gtk::PolicyType::Automatic)
         .vscrollbar_policy(gtk::PolicyType::External)
         .child(&cv)
         .vexpand(true)

@@ -13,15 +13,15 @@ pub fn build(page: &Page) {
     page.body.append(&holder);
     let page = Page { root: page.root.clone(), body: holder.clone() };
     live::ready(move |snap| {
-        overall(&page);
-        let shown: Vec<&Iface> = snap.nets.iter().filter(|n| n.kind != Kind::Virtual || n.up).collect();
+        let mut shown: Vec<&Iface> = snap.nets.iter().filter(|n| n.kind != Kind::Virtual || n.up).collect();
+        shown.sort_by_key(|n| (!n.up, n.kind == Kind::Virtual));
         if shown.is_empty() {
             holder.append(&widgets::banner("No network interfaces are up.", false));
-            return;
         }
         for n in shown {
             iface_section(&page, n);
         }
+        overall(&page);
     });
 }
 
@@ -65,11 +65,10 @@ fn conn_bars(s: &Snapshot) -> Vec<Bar> {
 
 fn overall(page: &Page) {
     let g = page.cards("Connections");
-    let floor = 64.0 * 1024.0;
-    let down = charts::tile("Download", Some(charts::spark("net.rx", Scale::Auto { floor }, fmt::net_rate)));
-    let up = charts::tile("Upload", Some(charts::spark("net.tx", Scale::Auto { floor }, fmt::net_rate)));
-    let open = charts::tile("Open connections", Some(charts::spark("net.conns", Scale::Auto { floor: 20.0 }, fmt::count)));
-    let listen = charts::tile("Listening", None);
+    let down = charts::tile("Download");
+    let up = charts::tile("Upload");
+    let open = charts::tile("Open connections");
+    let listen = charts::tile("Listening");
     g.add(&charts::row(&[down.root.upcast_ref(), up.root.upcast_ref(), open.root.upcast_ref(), listen.root.upcast_ref()], 150));
 
     let apps = charts::bar_list(8, "No open connections.", true);
@@ -84,7 +83,13 @@ fn overall(page: &Page) {
     ports_box.append(&widgets::label("LISTENING", "stat-title"));
     ports_box.append(&ports);
     let (ports_card, ports_sum) = charts::card("Sockets", &ports_box);
-    g.add(&charts::row(&[apps_card.upcast_ref(), ports_card.upcast_ref()], PAIR));
+    g.add(&apps_card);
+    let sockets = widgets::vbox(12);
+    sockets.append(&ports_card);
+    let gr = graph::graph(vec![Series::new("net.conns", "Open", Tone::Accent)], Scale::Auto { floor: 20.0 }, fmt::count, 120);
+    let (connection_history, _) = charts::card("Connection history", &gr.root);
+    sockets.append(&connection_history);
+    g.add(&widgets::disclosure("network.sockets", "Sockets and listening ports", &sockets));
 
     let port_rows: Vec<(gtk::Box, gtk::Label, gtk::Label, gtk::Label)> = (0..8)
         .map(|_| {
@@ -116,6 +121,15 @@ fn overall(page: &Page) {
         up.sub.set_text(&format!("{} since connecting", fmt::bytes(tt as f64)));
         let Some(c) = &s.conns else {
             open.value.set_text("–");
+            open.sub.set_text("Not available");
+            listen.value.set_text("–");
+            listen.sub.set_text("Not available");
+            apps.set(&[]);
+            apps_sum.set_text("Not available");
+            ports_sum.set_text("Not available");
+            for (row, ..) in &port_rows {
+                row.set_visible(false);
+            }
             return;
         };
         open.value.set_text(&c.established.to_string());
@@ -134,10 +148,10 @@ fn overall(page: &Page) {
         let procs = s.procs.as_deref().unwrap_or(&[]);
         for (i, (row, port, who, scope)) in port_rows.iter().enumerate() {
             let Some(l) = c.listeners.get(i) else {
-                row.set_opacity(0.0);
+                row.set_visible(false);
                 continue;
             };
-            row.set_opacity(1.0);
+            row.set_visible(true);
             port.set_text(&format!("{} {}", if l.udp { "UDP" } else { "TCP" }, l.port));
             let name = procs.iter().find(|p| p.pid == l.pid).map(|p| p.name.clone());
             who.set_text(&name.unwrap_or_else(|| "system".into()));
@@ -174,8 +188,15 @@ fn iface_section(page: &Page, n: &Iface) {
     } else {
         vec![("State", None), ("Link speed", None), ("MTU", None), ("Errors", None), ("Dropped", None)]
     };
-    let (link, link_sum, ring, lv) = charts::ring_card(if wifi { "Signal" } else { "Link" }, 112, &items);
-    g.add(&charts::row(&[link.upcast_ref(), traffic.upcast_ref()], PAIR));
+    let link_body = widgets::vbox(12);
+    let signal = widgets::label("–", "stat-value");
+    signal.add_css_class("tnum");
+    link_body.append(&signal);
+    let (legend, lv) = charts::legend(&items);
+    link_body.append(&legend);
+    let (link, link_sum) = charts::card("Connection", &link_body);
+    g.add(&charts::primary(&link, &traffic));
+    let diagnostics = widgets::vbox(12);
 
     let gr = graph::graph(
         vec![
@@ -191,9 +212,9 @@ fn iface_section(page: &Page, n: &Iface) {
         let gr =
             graph::graph(vec![Series::new(format!("net.{name}.signal"), "Signal", Tone::Accent)], Scale::Percent, fmt::pct, 100);
         let (sig, _) = charts::card("Signal over time", &gr.root);
-        g.add(&charts::row(&[sig.upcast_ref(), packets.upcast_ref()], PAIR));
+        diagnostics.append(&charts::row(&[sig.upcast_ref(), packets.upcast_ref()], PAIR));
     } else {
-        g.add(&packets);
+        diagnostics.append(&packets);
     }
 
     let spec = widgets::vbox(0);
@@ -202,7 +223,8 @@ fn iface_section(page: &Page, n: &Iface) {
     let (flow, v) =
         widgets::kv_flow(&["Addresses", "Gateway", "DNS", "Hardware address", "Received", "Sent", "Errors", "Dropped"]);
     spec.append(&flow);
-    g.add(&spec);
+    diagnostics.append(&spec);
+    g.add(&widgets::disclosure(&format!("network.{name}.details"), "Link diagnostics and configuration", &diagnostics));
 
     live::on_tick(&traffic, move |s| {
         let Some(n) = s.nets.iter().find(|x| x.name == name) else {
@@ -217,11 +239,13 @@ fn iface_section(page: &Page, n: &Iface) {
             match n.signal {
                 Some(dbm) => {
                     let q = fmt::signal_quality(dbm);
-                    ring.set(q / 100.0, &format!("{dbm:.0}"), "dBm", q < 30.0);
+                    signal.set_text(&format!("{dbm:.0} dBm"));
+                    widgets::set_warn(&signal, q < 30.0);
                     link_sum.set_text(quality(dbm));
                 }
                 None => {
-                    ring.set(0.0, "–", "", false);
+                    signal.set_text("–");
+                    widgets::set_warn(&signal, false);
                     link_sum.set_text(if n.up { "" } else { "Disconnected" });
                 }
             }
@@ -244,9 +268,13 @@ fn iface_section(page: &Page, n: &Iface) {
             match speed {
                 Some(sp) if sp > 0.0 => {
                     let f = used / sp;
-                    ring.set(f.min(1.0), &fmt::pct(f * 100.0), "of the link", f > 0.9);
+                    signal.set_text(&format!("{} of link", fmt::pct(f * 100.0)));
+                    widgets::set_warn(&signal, f > 0.9);
                 }
-                _ => ring.set(0.0, if n.up { "Up" } else { "Down" }, "", false),
+                _ => {
+                    signal.set_text(if n.up { "Up" } else { "Down" });
+                    widgets::set_warn(&signal, false);
+                }
             }
             link_sum.set_text(if n.up { "Connected" } else { "Down" });
             lv[0].set_text(if n.up { "Connected" } else { "Down" });

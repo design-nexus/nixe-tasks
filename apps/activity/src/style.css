@@ -231,13 +231,13 @@ window.activity-window button.stat-tile:hover {
 }
 
 .graph-plot {
-  background: @field;
-  border-radius: var(--nyx-radius-small);
+  background: transparent;
+  border-radius: 0;
 }
 
 .graph-axis {
   font-size: 11px;
-  color: @theme_text_tertiary;
+  color: mix(@theme_dim_text, @theme_text, 0.2);
 }
 
 .graph-plot .graph-axis {
@@ -426,7 +426,7 @@ window.activity-window levelbar > trough > block.empty {
 .toolbar {
   min-height: 44px;
   margin: 0;
-  padding: 0 16px 0 20px;
+  padding: 0 16px;
   background: transparent;
 }
 
@@ -438,7 +438,7 @@ window.activity-window levelbar > trough > block.empty {
 
 /* A toolbar of two rows (filters over the search) keeps even space around both. */
 .toolbar.stacked {
-  padding: 10px 16px 10px 20px;
+  padding: 10px 16px;
 }
 
 .toolbar.stacked > * {
@@ -477,11 +477,11 @@ window.activity-window columnview > header > button:hover > box > label {
   font-feature-settings: "tnum";
 }
 
-.cell-num.heat-1 { background: alpha(@theme_accent, 0.07); }
+.cell-num.heat-1 { background: transparent; }
 
-.cell-num.heat-2 { background: alpha(@theme_accent, 0.13); }
+.cell-num.heat-2 { background: transparent; }
 
-.cell-num.heat-3 { background: alpha(@theme_accent, 0.2); }
+.cell-num.heat-3 { background: transparent; }
 
 .cell-num.heat-4 { background: alpha(@theme_accent, 0.28); font-weight: 600; }
 
@@ -537,7 +537,7 @@ window.activity-window list.table-card {
 }
 
 window.activity-window list.service-list {
-  margin: 0 16px 12px 20px;
+  margin: 0 16px 12px;
   padding: 4px;
   border-radius: var(--nyx-radius-card);
   background: @theme_card;
@@ -590,7 +590,7 @@ window.activity-window .service-row menubutton > button:hover {
 }
 
 .services-summary {
-  margin: 4px 16px 12px 20px;
+  margin: 4px 16px 12px;
 }
 
 window.activity-window dropdown.compact > button {
@@ -604,4 +604,100 @@ window.activity-window list.table-card > row {
 
 window.activity-window list.table-card > row:hover {
   background: @row_hover;
+}
+
+/* ---------- Focused monitoring layout ---------- */
+
+window.activity-window .settings-page {
+  padding: 16px 16px 28px;
+}
+
+window.activity-window .settings-page.narrow {
+  padding: 16px 16px 24px;
+}
+
+.group-head {
+  margin-top: 20px;
+}
+
+.metric-strip {
+  padding: 12px 16px;
+}
+
+.metric-strip .metric-reading {
+  background: transparent;
+  padding: 0;
+  min-width: 120px;
+}
+
+.metric-reading .stat-value {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.metric-reading .stat-sub {
+  font-size: 11.5px;
+  color: mix(@theme_dim_text, @theme_text, 0.15);
+}
+
+.stat-title,
+window.activity-window .usage-summary .legend-label {
+  color: mix(@theme_dim_text, @theme_text, 0.15);
+}
+
+.usage-summary .chart-legend {
+  font-size: 11.5px;
+}
+
+.usage-summary .legend-value {
+  font-weight: 500;
+}
+
+window.activity-window .nav-readout {
+  color: @theme_dim_text;
+  font-weight: 400;
+}
+
+window.activity-window .bar-name {
+  font-weight: 400;
+}
+
+.ranking-empty {
+  padding: 12px 0;
+}
+
+window.activity-window button.ranking-more {
+  min-height: 26px;
+  padding: 0 6px;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: @theme_dim_text;
+}
+
+.diagnostic-group {
+  margin-top: 12px;
+}
+
+.diagnostic-group > title {
+  padding: 8px 2px;
+  color: @theme_dim_text;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.diagnostic-group > title:hover {
+  color: @theme_text;
+}
+
+.diagnostic-group > box {
+  margin-top: 6px;
+}
+
+.services-summary .graph-card {
+  padding: 10px 14px;
+}
+
+window.activity-window .settings-page.fill,
+window.activity-window .settings-page.fill.narrow {
+  padding: 0;
 }

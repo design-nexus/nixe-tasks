@@ -370,13 +370,25 @@ pub fn build(page: &Page) {
         }
     });
 
+    // ----- Busiest processes -----
+    let g = page.group("Busiest processes");
+    let (c1, first) = top_list(0);
+    let (c2, second) = top_list(1);
+    let pair = crate::charts::row(&[c1.upcast_ref(), c2.upcast_ref()], crate::charts::PAIR);
+    g.add(&pair);
+    live::on_tick(&pair, move |s| {
+        let Some(procs) = &s.procs else { return };
+        let list: Vec<&Proc> = procs.iter().filter(|p| !p.kernel).collect();
+        fill_top(&first, &list);
+        fill_top(&second, &list);
+    });
     // ----- System -----
-    let g = page.group("System");
+    let system = page.diagnostics("overview.system", "System details");
     let card = widgets::vbox(0);
     card.add_css_class("graph-card");
     let (kvs, v) = widgets::kv_flow(&["Uptime", "Load average", "Processes", "Threads", "Kernel", "Processor"]);
     card.append(&kvs);
-    g.add(&card);
+    system.add(&card);
     let kernel = crate::sampler::read("/proc/sys/kernel/osrelease").trim().to_string();
     v[4].set_text(&kernel);
     v[4].set_tooltip_text(Some(&kernel));
@@ -389,18 +401,5 @@ pub fn build(page: &Page) {
         }
         v[5].set_text(&s.cpu.model);
         v[5].set_tooltip_text(Some(&s.cpu.model));
-    });
-
-    // ----- Busiest processes -----
-    let g = page.group("Busiest processes");
-    let (c1, first) = top_list(0);
-    let (c2, second) = top_list(1);
-    let pair = crate::charts::row(&[c1.upcast_ref(), c2.upcast_ref()], crate::charts::PAIR);
-    g.add(&pair);
-    live::on_tick(&pair, move |s| {
-        let Some(procs) = &s.procs else { return };
-        let list: Vec<&Proc> = procs.iter().filter(|p| !p.kernel).collect();
-        fill_top(&first, &list);
-        fill_top(&second, &list);
     });
 }

@@ -147,11 +147,18 @@ fn folded(page: &Page, title: &str, note: &str, count: usize) -> gtk::Box {
     let list = widgets::vbox(0);
     list.add_css_class("group-list");
     revealer.set_child(Some(&list));
+    let key = format!("startup.{title}");
+    let open = crate::prefs::get().expanded_groups.get(&key).copied().unwrap_or(false);
+    revealer.set_reveal_child(open);
+    toggle.set_label(&if open { "Hide".to_string() } else { format!("Show {count}") });
     g.list.add_css_class("bare");
     g.add(&revealer);
     toggle.connect_clicked(move |b| {
         let open = !revealer.reveals_child();
         revealer.set_reveal_child(open);
+        crate::prefs::update(|p| {
+            p.expanded_groups.insert(key.clone(), open);
+        });
         b.set_label(&if open { "Hide".to_string() } else { format!("Show {count}") });
     });
     list
@@ -208,22 +215,22 @@ fn summary(page: &Page, d: &Data) {
     g.add(&charts::row(&[boot_card.upcast_ref(), slow_card.upcast_ref()], PAIR));
 
     let managed_on = d.managed.hyprland.iter().filter(|m| m.enabled).count();
-    let hypr = charts::tile("With Hyprland", None);
+    let hypr = charts::tile("With Hyprland");
     hypr.value.set_text(&(d.user.len() + d.omarchy.len() + managed_on).to_string());
     hypr.sub.set_text(&format!("{} Omarchy · {} yours", d.omarchy.len(), d.user.len() + managed_on));
     let here: Vec<&XdgEntry> = d.xdg.iter().filter(|e| !e.other_desktop).collect();
     let apps_on = here.iter().filter(|e| e.enabled).count();
-    let apps_tile = charts::tile("Apps", None);
+    let apps_tile = charts::tile("Apps");
     apps_tile.value.set_text(&apps_on.to_string());
     apps_tile.sub.set_text(&format!("of {} that can start here", here.len()));
     let svc: Vec<&Unit> = d.units.iter().filter(|u| u.file_state == "enabled").collect();
-    let svc_tile = charts::tile("Background services", None);
+    let svc_tile = charts::tile("Background services");
     svc_tile.value.set_text(&svc.len().to_string());
     svc_tile.sub.set_text(&format!("{} running now", svc.iter().filter(|u| u.running()).count()));
     let off = d.xdg.iter().filter(|e| !e.enabled && !e.other_desktop).count()
         + d.managed.hyprland.iter().filter(|m| !m.enabled).count()
         + d.units.iter().filter(|u| u.file_state == "disabled" && !u.name.starts_with("app-")).count();
-    let off_tile = charts::tile("Turned off", None);
+    let off_tile = charts::tile("Turned off");
     off_tile.value.set_text(&off.to_string());
     off_tile.sub.set_text("won't start at login");
     g.add(&charts::row(

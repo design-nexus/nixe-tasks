@@ -55,7 +55,7 @@ fn gpu_section(page: &Page, g: &Gpu) {
     );
     let gr = graph::graph(vec![Series::new(format!("gpu.{pci}.util"), "Busy", Tone::Accent)], Scale::Percent, fmt::pct, 140);
     let (hist, hist_sum) = charts::card("History", &gr.root);
-    let row1 = charts::row(&[usage.upcast_ref(), hist.upcast_ref()], PAIR);
+    let row1 = charts::primary(&usage, &hist);
     group.add(&row1);
 
     // ----- Engines and clock -----
@@ -70,7 +70,6 @@ fn gpu_section(page: &Page, g: &Gpu) {
     let gr = graph::graph(vec![Series::new(format!("gpu.{pci}.vram"), "Used", Tone::Accent)], Scale::Percent, fmt::pct, 110);
     let (vram_card, vram_sum) = charts::card("Video memory", &gr.root);
     let row2 = charts::row(&[eng_card.upcast_ref(), freq_card.upcast_ref(), vram_card.upcast_ref()], PAIR);
-    group.add(&row2);
 
     // ----- Who's using it -----
     let busy = charts::bar_list(8, "No app is using it.", true);
@@ -78,8 +77,11 @@ fn gpu_section(page: &Page, g: &Gpu) {
         charts::card(if vendor == Vendor::Nvidia { "Apps using it, by video memory" } else { "Busiest apps" }, &busy.root);
     let mem = charts::bar_list(8, "No app holds GPU memory.", true);
     let (mem_card, mem_sum) = charts::card("GPU memory by app", &mem.root);
-    let row3 = charts::row(&[busy_card.upcast_ref(), mem_card.upcast_ref()], PAIR);
-    group.add(&row3);
+    if vendor == Vendor::Nvidia {
+        group.add(&busy_card);
+    } else {
+        group.add(&widgets::consumers(&format!("gpu.{pci}"), ("Activity", &busy_card), ("GPU memory", &mem_card)));
+    }
 
     // ----- The card itself -----
     let spec = widgets::vbox(0);
@@ -87,7 +89,11 @@ fn gpu_section(page: &Page, g: &Gpu) {
     spec.add_css_class("spec-card");
     let (flow, v) = widgets::kv_flow(&["Driver", "PCI address", "Clock range", "Power limit", "Power saving", "Vendor"]);
     spec.append(&flow);
-    group.add(&spec);
+    let diagnostics = widgets::vbox(12);
+    diagnostics.append(&row2);
+    diagnostics.append(&spec);
+    let diagnostics = widgets::disclosure(&format!("gpu.{pci}.details"), "Engines and hardware details", &diagnostics);
+    group.add(&diagnostics);
     v[0].set_text(if g.driver.is_empty() { "–" } else { &g.driver });
     v[1].set_text(&g.pci);
     v[5].set_text(match vendor {
@@ -113,7 +119,7 @@ fn gpu_section(page: &Page, g: &Gpu) {
         // Nothing to chart for a GPU we aren't asking.
         let polled = !asleep && !(vendor == Vendor::Nvidia && idle);
         row1.set_visible(polled);
-        row2.set_visible(polled);
+        diagnostics.set_visible(polled);
         let dash = || "–".to_string();
 
         let util = g.util.unwrap_or(0.0);
@@ -183,7 +189,6 @@ fn gpu_section(page: &Page, g: &Gpu) {
         };
         busy.set(&users);
         let held = top::procs(s, By::GpuMem, 8, None);
-        mem_card.set_visible(vendor != Vendor::Nvidia);
         mem_sum.set_text(&g.client_mem.map(|m| format!("{} in all", fmt::bytes(m as f64))).unwrap_or_default());
         mem.set(&held);
 

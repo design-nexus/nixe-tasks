@@ -30,18 +30,19 @@ pub fn build(page: &Page) {
         150,
     );
     let (hist, hist_sum) = charts::card("History", &gr.root);
-    g.add(&charts::row(&[ring_card.upcast_ref(), hist.upcast_ref()], PAIR));
+    g.add(&charts::primary(&ring_card, &hist));
 
     // ----- Tiles -----
-    let clock = charts::tile("Clock", Some(charts::spark("cpu.freq", Scale::Auto { floor: 1000.0 }, fmt::mhz)));
-    let load = charts::tile("Load", Some(charts::spark("cpu.load", Scale::Auto { floor: 1.0 }, |v| format!("{v:.2}"))));
-    let psi = charts::tile("Waiting for CPU", Some(charts::spark("cpu.psi", Scale::Auto { floor: 10.0 }, fmt::pct)));
-    let temp = charts::tile("Temperature", Some(charts::spark("temp.cpu", Scale::Auto { floor: 60.0 }, fmt::temp)));
-    g.add(&charts::row(&[clock.root.upcast_ref(), load.root.upcast_ref(), psi.root.upcast_ref(), temp.root.upcast_ref()], 0));
+    let clock = charts::tile("Clock");
+    let load = charts::tile("Load");
+    let psi = charts::tile("Waiting for CPU");
+    let temp = charts::tile("Temperature");
+    g.add(&charts::row(&[clock.root.upcast_ref(), load.root.upcast_ref(), psi.root.upcast_ref(), temp.root.upcast_ref()], 150));
 
     live::on_tick(&ring_card, move |s| {
         let c = &s.cpu;
         model.set_text(&c.model);
+        model.set_tooltip_text(Some(&c.model));
         ring.set_parts(&[c.user / 100.0, c.system / 100.0, c.iowait / 100.0, c.irq / 100.0], &fmt::pct(c.usage), "busy");
         let idle = (100.0 - c.usage).max(0.0);
         for (l, v) in lv.iter().zip([c.user, c.system, c.iowait, c.irq, idle]) {
@@ -78,8 +79,8 @@ pub fn build(page: &Page) {
     let (apps_card, apps_sum) = charts::card("Busiest apps", &apps.root);
     let procs = charts::bar_list(8, "Nothing busy right now.", true);
     let (procs_card, procs_sum) = charts::card("Busiest processes", &procs.root);
-    g.add(&charts::row(&[apps_card.upcast_ref(), procs_card.upcast_ref()], PAIR));
-    live::on_tick(&apps_card, move |s| {
+    g.add(&widgets::consumers("cpu", ("Apps", &apps_card), ("Processes", &procs_card)));
+    live::on_tick(&g.list, move |s| {
         apps.set(&top::groups(s, By::Cpu, 8, None));
         procs.set(&top::procs(s, By::Cpu, 8, None));
         apps_sum.set_text(&format!("{} running now", s.cpu.running));
@@ -98,7 +99,13 @@ pub fn build(page: &Page) {
     let gr =
         graph::graph(vec![Series::new("cpu.load", "Load", Tone::Accent)], Scale::Auto { floor: 4.0 }, |v| format!("{v:.2}"), 120);
     let (load_card, load_sum) = charts::card("Load average", &gr.root);
-    g.add(&charts::row(&[freq_card.upcast_ref(), load_card.upcast_ref()], PAIR));
+    let pressure =
+        graph::graph(vec![Series::new("cpu.psi", "Waiting", Tone::Accent)], Scale::Auto { floor: 10.0 }, fmt::pct, 120);
+    let (pressure, _) = charts::card("Waiting for CPU", &pressure.root);
+    let trends = widgets::vbox(12);
+    trends.append(&charts::row(&[freq_card.upcast_ref(), load_card.upcast_ref()], PAIR));
+    trends.append(&pressure);
+    g.add(&widgets::disclosure("cpu.trends", "Clock, load and pressure history", &trends));
     live::on_tick(&freq_card, move |s| {
         let c = &s.cpu;
         freq_sum.set_text(&if c.governor.is_empty() { String::new() } else { format!("{} governor", c.governor) });
@@ -111,7 +118,7 @@ pub fn build(page: &Page) {
 
 /// Each logical processor, grouped by core type on hybrid chips.
 fn threads(page: &Page) {
-    let g = page.group("Each thread");
+    let g = page.diagnostics("cpu.threads", "Each thread");
     let grid = crate::prefs::get().cpu_grid;
     g.note(if grid {
         "Busy time of every logical processor; darker is busier."
@@ -134,7 +141,7 @@ fn threads(page: &Page) {
         });
         switch.append(&b);
     }
-    g.header_end(&switch);
+    g.add(&switch);
     g.list.add_css_class("bare");
     g.list.set_spacing(8);
     live::ready(move |snap| thread_cells(&g, grid, snap));
@@ -220,7 +227,7 @@ fn thread_cells(g: &widgets::Group, grid: bool, snap: &Snapshot) {
 
 /// The processor itself: what it is and how it's set up.
 fn spec(page: &Page) {
-    let g = page.cards("Processor");
+    let g = page.diagnostics("cpu.hardware", "Processor details");
     let card = widgets::vbox(0);
     card.add_css_class("graph-card");
     card.add_css_class("spec-card");

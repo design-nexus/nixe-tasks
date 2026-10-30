@@ -56,20 +56,25 @@ pub fn build(page: &Page) {
             holder.append(&widgets::banner("No disks were found in <tt>/sys/block</tt>.", true));
             return;
         }
-        overall(&page);
+        let consumers = overall(&page);
         for d in &snap.disks {
             disk_section(&page, d);
         }
+        let activity = page.cards("Activity");
+        activity.add(&consumers);
+        let gr = graph::graph(vec![Series::new("io.psi", "Waiting", Tone::Accent)], Scale::Auto { floor: 10.0 }, fmt::pct, 120);
+        let (pressure, _) = charts::card("Waiting on disk", &gr.root);
+        activity.add(&widgets::disclosure("storage.pressure", "Disk pressure history", &pressure));
     });
 }
 
 /// Every disk together, and who's reading and writing.
-fn overall(page: &Page) {
+fn overall(page: &Page) -> gtk::Box {
     let g = page.cards("All disks");
-    let read = charts::tile("Reading", Some(charts::spark("disk.read", Scale::Auto { floor: 1024.0 * 1024.0 }, fmt::rate)));
-    let write = charts::tile("Writing", Some(charts::spark("disk.write", Scale::Auto { floor: 1024.0 * 1024.0 }, fmt::rate)));
-    let busy = charts::tile("Busiest disk", Some(charts::spark("disk.busy", Scale::Percent, fmt::pct)));
-    let psi = charts::tile("Waiting on disk", Some(charts::spark("io.psi", Scale::Auto { floor: 10.0 }, fmt::pct)));
+    let read = charts::tile("Reading");
+    let write = charts::tile("Writing");
+    let busy = charts::tile("Busiest disk");
+    let psi = charts::tile("Waiting on disk");
     psi.root.set_tooltip_text(Some("How much of the time programs were held up waiting for the disks"));
     g.add(&charts::row(&[read.root.upcast_ref(), write.root.upcast_ref(), busy.root.upcast_ref(), psi.root.upcast_ref()], 150));
 
@@ -77,7 +82,7 @@ fn overall(page: &Page) {
     let (procs_card, _) = charts::card("Busiest processes", &procs.root);
     let apps = charts::bar_list(8, "Nothing is reading or writing.", true);
     let (apps_card, _) = charts::card("Busiest apps and services", &apps.root);
-    g.add(&charts::row(&[procs_card.upcast_ref(), apps_card.upcast_ref()], PAIR));
+    let consumers = widgets::consumers("storage", ("Apps", &apps_card), ("Processes", &procs_card));
 
     live::on_tick(&read.root, move |s| {
         read.value.set_text(&fmt::rate(s.disk_read()));
@@ -99,10 +104,11 @@ fn overall(page: &Page) {
             }
         }
     });
-    live::on_tick(&procs_card, move |s| {
+    live::on_tick(&g.list, move |s| {
         procs.set(&top::procs(s, By::Io, 8, None));
         apps.set(&top::groups(s, By::Io, 8, None));
     });
+    consumers
 }
 
 fn disk_section(page: &Page, d: &Disk) {
@@ -129,21 +135,12 @@ fn disk_section(page: &Page, d: &Disk) {
         120,
     );
     let (iops_card, iops_sum) = charts::card("Requests", &gr.root);
-    g.add(&charts::row(&[tp_card.upcast_ref(), iops_card.upcast_ref()], PAIR));
+    g.add(&tp_card);
 
-    let active = charts::tile("Active time", Some(charts::spark(format!("disk.{name}.busy"), Scale::Percent, fmt::pct)));
-    let latency =
-        charts::tile("Response time", Some(charts::spark(format!("disk.{name}.lat"), Scale::Auto { floor: 1.0 }, fmt::ms)));
-    let space = charts::tile("Space used", None);
-    let temp = charts::tile("Temperature", None);
-    let temp_ring = charts::ring(56);
-    temp_ring.root.set_halign(gtk::Align::Start);
-    temp_ring.root.set_margin_top(6);
-    temp.root.append(&temp_ring.root);
-    let size_ring = charts::ring(56);
-    size_ring.root.set_halign(gtk::Align::Start);
-    size_ring.root.set_margin_top(6);
-    space.root.append(&size_ring.root);
+    let active = charts::tile("Active time");
+    let latency = charts::tile("Response time");
+    let space = charts::tile("Space used");
+    let temp = charts::tile("Temperature");
     g.add(&charts::row(
         &[active.root.upcast_ref(), latency.root.upcast_ref(), space.root.upcast_ref(), temp.root.upcast_ref()],
         150,
@@ -168,7 +165,21 @@ fn disk_section(page: &Page, d: &Disk) {
     spec.add_css_class("spec-card");
     let (flow, v) = widgets::kv_flow(&["Type", "Size", "Interface", "Firmware", "Read since boot", "Written since boot"]);
     spec.append(&flow);
-    g.add(&spec);
+    let diagnostics = widgets::vbox(12);
+    diagnostics.append(&iops_card);
+    let active_history =
+        graph::graph(vec![Series::new(format!("disk.{name}.busy"), "Active", Tone::Accent)], Scale::Percent, fmt::pct, 120);
+    let (active_history, _) = charts::card("Active time", &active_history.root);
+    let latency_history = graph::graph(
+        vec![Series::new(format!("disk.{name}.lat"), "Response", Tone::Accent)],
+        Scale::Auto { floor: 1.0 },
+        fmt::ms,
+        120,
+    );
+    let (latency_history, _) = charts::card("Response time", &latency_history.root);
+    diagnostics.append(&charts::row(&[active_history.upcast_ref(), latency_history.upcast_ref()], PAIR));
+    diagnostics.append(&spec);
+    g.add(&widgets::disclosure(&format!("storage.{name}.details"), "Requests and drive details", &diagnostics));
     let static_info = [
         kind(d).to_string(),
         fmt::bytes(d.size as f64),
@@ -193,25 +204,21 @@ fn disk_section(page: &Page, d: &Disk) {
             let f = used as f64 / total as f64;
             space.value.set_text(&fmt::bytes(used as f64));
             space.sub.set_text(&format!("of {} mounted", fmt::bytes(total as f64)));
-            size_ring.set(f, &fmt::pct(f * 100.0), "", f * 100.0 >= crate::prefs::get().warn_disk);
+            widgets::set_warn(&space.value, f * 100.0 >= crate::prefs::get().warn_disk);
         } else {
             space.value.set_text("–");
             space.sub.set_text("nothing mounted");
         }
-        size_ring.root.set_visible(total > 0);
         match d.temp {
             Some(t) => {
                 temp.value.set_text(&fmt::temp(t));
                 temp.sub.set_text("controller");
                 let hot = t >= crate::prefs::get().warn_temp;
-                temp_ring.set((t / 85.0).clamp(0.0, 1.0), "", "", hot);
                 widgets::set_warn(&temp.value, hot);
-                temp_ring.root.set_visible(true);
             }
             None => {
                 temp.value.set_text("–");
                 temp.sub.set_text("not reported");
-                temp_ring.root.set_visible(false);
             }
         }
         v[4].set_text(&fmt::bytes(d.read_total as f64));

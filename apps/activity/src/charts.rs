@@ -2,7 +2,6 @@
 //! tiles, plus the rows that keep cards side by side at one size. Colours come
 //! from the theme tokens, like the graphs'.
 
-use crate::graph::{self, Scale, Series, Tone};
 use crate::theme::{self, Rgb};
 use crate::widgets;
 use gtk::cairo;
@@ -319,26 +318,25 @@ struct BarRow {
     pid: Rc<Cell<i32>>,
 }
 
-/// A fixed number of ranked rows (name, bar, value). Rows keep their place when
-/// there are fewer items, so the card doesn't change height as values come and go.
+/// Ranked rows that size to their contents, with five shown initially.
 pub struct BarList {
     pub root: gtk::Box,
-    rows: Vec<BarRow>,
+    rows: Rc<Vec<BarRow>>,
     empty: gtk::Label,
+    more: gtk::Button,
+    expanded: Rc<Cell<bool>>,
+    count: Rc<Cell<usize>>,
 }
 
 pub fn bar_list(rows: usize, empty: &str, icons: bool) -> BarList {
     let root = widgets::vbox(0);
     root.add_css_class("bar-list");
-    let overlay = gtk::Overlay::new();
     let list = widgets::vbox(0);
-    overlay.set_child(Some(&list));
     let empty = widgets::label(empty, "dim");
-    empty.set_halign(gtk::Align::Center);
-    empty.set_valign(gtk::Align::Center);
-    empty.set_visible(false);
-    overlay.add_overlay(&empty);
-    root.append(&overlay);
+    empty.add_css_class("ranking-empty");
+    empty.set_wrap(true);
+    root.append(&empty);
+    root.append(&list);
     let mut out = Vec::new();
     for _ in 0..rows {
         let r = widgets::hbox(10);
@@ -352,7 +350,7 @@ pub fn bar_list(rows: usize, empty: &str, icons: bool) -> BarList {
         name.set_max_width_chars(18);
         let frac = Rc::new(Cell::new((0.0f64, false)));
         let area = gtk::DrawingArea::new();
-        area.set_content_height(8);
+        area.set_content_height(5);
         area.set_hexpand(true);
         area.set_valign(gtk::Align::Center);
         {
@@ -392,19 +390,42 @@ pub fn bar_list(rows: usize, empty: &str, icons: bool) -> BarList {
                 crate::sections::processes::reveal(p.get());
             }
         });
+        b.set_visible(false);
         list.append(&b);
         out.push(BarRow { root: b.upcast(), icon, name, frac, area, value, pid });
     }
-    BarList { root, rows: out, empty }
+    let rows = Rc::new(out);
+    let more = gtk::Button::with_label("Show more");
+    more.add_css_class("flat");
+    more.add_css_class("ranking-more");
+    more.set_halign(gtk::Align::Start);
+    more.set_visible(false);
+    root.append(&more);
+    let expanded = Rc::new(Cell::new(false));
+    let count = Rc::new(Cell::new(0usize));
+    {
+        let (rows, expanded, count) = (rows.clone(), expanded.clone(), count.clone());
+        more.connect_clicked(move |button| {
+            expanded.set(!expanded.get());
+            button.set_label(if expanded.get() { "Show less" } else { "Show more" });
+            for (i, row) in rows.iter().enumerate() {
+                row.root.set_visible(i < count.get() && (expanded.get() || i < 5));
+            }
+        });
+    }
+    BarList { root, rows, empty, more, expanded, count }
 }
 
 impl BarList {
     pub fn set(&self, bars: &[Bar]) {
         self.empty.set_visible(bars.is_empty());
+        self.count.set(bars.len().min(self.rows.len()));
+        self.more.set_visible(self.count.get() > 5);
         for (i, row) in self.rows.iter().enumerate() {
             match bars.get(i) {
                 Some(b) => {
-                    row.root.set_opacity(1.0);
+                    row.root.set_visible(self.expanded.get() || i < 5);
+                    row.root.set_focusable(b.pid > 0);
                     row.root.set_can_target(b.pid > 0 || !b.tip.is_empty());
                     if b.pid > 0 {
                         row.root.add_css_class("clickable");
@@ -433,7 +454,7 @@ impl BarList {
                     row.root.set_tooltip_text(if tip.is_empty() { None } else { Some(&tip) });
                 }
                 None => {
-                    row.root.set_opacity(0.0);
+                    row.root.set_visible(false);
                     row.root.set_can_target(false);
                     row.pid.set(0);
                 }
@@ -449,17 +470,18 @@ pub fn card(title: &str, body: &impl IsA<gtk::Widget>) -> (gtk::Box, gtk::Label)
     widgets::graph_card(title, body)
 }
 
-/// A small card: a caption, a large value, a line under it and an optional sparkline.
+/// A compact secondary reading: caption, value and supporting detail.
 pub struct Tile {
     pub root: gtk::Box,
     pub value: gtk::Label,
     pub sub: gtk::Label,
 }
 
-pub fn tile(title: &str, spark: Option<gtk::DrawingArea>) -> Tile {
+pub fn tile(title: &str) -> Tile {
     let root = widgets::vbox(2);
     root.add_css_class("graph-card");
     root.add_css_class("stat-card");
+    root.add_css_class("metric-reading");
     root.append(&widgets::label(&title.to_uppercase(), "stat-title"));
     let value = widgets::label("–", "stat-value");
     value.add_css_class("tnum");
@@ -467,25 +489,17 @@ pub fn tile(title: &str, spark: Option<gtk::DrawingArea>) -> Tile {
     root.append(&value);
     let sub = widgets::label("", "stat-sub");
     sub.set_ellipsize(pango::EllipsizeMode::End);
+    sub.connect_notify_local(Some("label"), |label, _| {
+        label.set_tooltip_text(Some(&label.text()));
+    });
     root.append(&sub);
-    if let Some(s) = spark {
-        s.set_margin_top(8);
-        s.set_vexpand(true);
-        s.set_valign(gtk::Align::End);
-        root.append(&s);
-    }
     Tile { root, value, sub }
-}
-
-/// A one-line sparkline for a tile.
-pub fn spark(key: impl Into<String>, scale: Scale, f: fn(f64) -> String) -> gtk::DrawingArea {
-    graph::sparkline(vec![Series::new(key, "", Tone::Accent)], scale, 30, f)
 }
 
 /// A card with a ring on the left and legend lines beside it.
 pub fn ring_card(title: &str, size: i32, items: &[(&str, Option<usize>)]) -> (gtk::Box, gtk::Label, Ring, Vec<gtk::Label>) {
-    let body = widgets::hbox(20);
-    let r = ring(size);
+    let body = widgets::hbox(12);
+    let r = ring(size.min(88));
     body.append(&r.root);
     let (lg, values) = legend(items);
     lg.set_hexpand(true);
@@ -497,7 +511,7 @@ pub fn ring_card(title: &str, size: i32, items: &[(&str, Option<usize>)]) -> (gt
     (c, summary, r, values)
 }
 
-const GAP: i32 = 10;
+const GAP: i32 = 12;
 
 fn visible_children(w: &gtk::Widget) -> Vec<gtk::Widget> {
     let mut out = Vec::new();
@@ -540,13 +554,27 @@ fn lines(children: &[gtk::Widget], cols: usize, width: i32) -> Vec<(&[gtk::Widge
         .collect()
 }
 
-/// Each line's height (minimum, natural) when `width` is shared out in `cols` columns.
-fn line_heights(children: &[gtk::Widget], cols: usize, width: i32) -> Vec<(i32, i32)> {
+/// Use the same column widths for measuring and allocating cards.
+fn column_width(line: &[gtk::Widget], i: usize, width: i32, weighted: bool) -> i32 {
+    if weighted && line.len() == 2 {
+        let available = (width - GAP).max(2);
+        let left_min = line[0].measure(gtk::Orientation::Horizontal, -1).0;
+        let right_min = line[1].measure(gtk::Orientation::Horizontal, -1).0;
+        let left = (available / 3).max(left_min).min((available - right_min).max(left_min));
+        if i == 0 { left } else { (available - left).max(1) }
+    } else {
+        let n = line.len() as i32;
+        let size = ((width - GAP * (n - 1)) / n).max(1);
+        if i + 1 == line.len() { (width - (size + GAP) * i as i32).max(1) } else { size }
+    }
+}
+
+fn line_heights(children: &[gtk::Widget], cols: usize, width: i32, weighted: bool) -> Vec<(i32, i32)> {
     lines(children, cols, width)
         .into_iter()
-        .map(|(line, col_w)| {
-            line.iter().fold((0, 0), |(mn, nt), c| {
-                let (m, n, _, _) = c.measure(gtk::Orientation::Vertical, col_w);
+        .map(|(line, _)| {
+            line.iter().enumerate().fold((0, 0), |(mn, nt), (i, c)| {
+                let (m, n, _, _) = c.measure(gtk::Orientation::Vertical, column_width(line, i, width, weighted));
                 (mn.max(m), nt.max(n))
             })
         })
@@ -554,7 +582,7 @@ fn line_heights(children: &[gtk::Widget], cols: usize, width: i32) -> Vec<(i32, 
 }
 
 mod imp {
-    use super::{GAP, columns, line_heights, lines, visible_children};
+    use super::{GAP, column_width, columns, line_heights, lines, visible_children};
     use gtk::glib;
     use gtk::prelude::*;
     use gtk::subclass::prelude::*;
@@ -565,11 +593,18 @@ mod imp {
         pub min_width: Cell<i32>,
         pub max_cols: Cell<usize>,
         pub stretch: Cell<bool>,
+        pub weighted: Cell<bool>,
     }
 
     impl CardLayout {
-        fn cols(&self, n: usize, width: i32) -> usize {
-            columns(n, width, self.min_width.get(), self.max_cols.get(), self.stretch.get())
+        fn cols(&self, children: &[gtk::Widget], width: i32) -> usize {
+            let requested = self.min_width.get();
+            let min = if requested > 0 {
+                children.iter().map(|c| c.measure(gtk::Orientation::Horizontal, -1).0).max().unwrap_or(0).max(requested)
+            } else {
+                0
+            };
+            columns(children.len(), width, min, self.max_cols.get(), self.stretch.get())
         }
     }
 
@@ -593,13 +628,13 @@ mod imp {
             let n = kids.len().max(1) as i32;
             if orientation == gtk::Orientation::Horizontal {
                 let widest = kids.iter().map(|c| c.measure(orientation, -1).0).max().unwrap_or(0).max(min_width);
-                let per_line = self.cols(kids.len(), i32::MAX / 4) as i32;
+                let per_line = self.cols(&kids, i32::MAX / 4) as i32;
                 let min = if min_width > 0 { widest } else { widest * n + GAP * (n - 1) };
                 return (min, widest * per_line + GAP * (per_line - 1), -1, -1);
             }
             let width = if for_size > 0 { for_size } else { min_width.max(1) * n };
-            let cols = self.cols(kids.len(), width);
-            let lines = line_heights(&kids, cols, width);
+            let cols = self.cols(&kids, width);
+            let lines = line_heights(&kids, cols, width, self.weighted.get());
             let gaps = GAP * (lines.len() as i32 - 1).max(0);
             let (m, nt) = lines.iter().fold((0, 0), |(a, b), (m, n)| (a + m, b + n));
             (m + gaps, nt + gaps, -1, -1)
@@ -607,15 +642,15 @@ mod imp {
 
         fn allocate(&self, w: &gtk::Widget, width: i32, _: i32, _: i32) {
             let kids = visible_children(w);
-            let cols = self.cols(kids.len(), width);
-            let heights = line_heights(&kids, cols, width);
+            let cols = self.cols(&kids, width);
+            let heights = line_heights(&kids, cols, width, self.weighted.get());
             let mut y = 0;
-            for ((line, col_w), (_, h)) in lines(&kids, cols, width).into_iter().zip(heights) {
+            for ((line, _), (_, h)) in lines(&kids, cols, width).into_iter().zip(heights) {
+                let mut x = 0;
                 for (i, c) in line.iter().enumerate() {
-                    let x = i as i32 * (col_w + GAP);
-                    // The last column takes the rounding remainder.
-                    let cw = if i + 1 == line.len() { width - x } else { col_w };
+                    let cw = column_width(line, i, width, self.weighted.get());
                     c.size_allocate(&gtk::Allocation::new(x, y, cw, h), -1);
+                    x += cw + GAP;
                 }
                 y += h + GAP;
             }
@@ -633,7 +668,12 @@ glib::wrapper! {
 /// than that; 0 keeps them on one line. Natural sizes don't widen the row, so
 /// a long label can't push cards onto lines of their own.
 pub fn row(cards: &[&gtk::Widget], min_width: i32) -> gtk::Box {
-    flow_row(cards, min_width, 0, false)
+    let row = flow_row(cards, min_width, 0, false);
+    if !cards.is_empty() && cards.iter().all(|c| c.has_css_class("metric-reading")) {
+        row.add_css_class("metric-strip");
+        row.add_css_class("graph-card");
+    }
+    row
 }
 
 /// Like `row`, but at most `max_cols` per line, wrapping at any count: a short
@@ -659,3 +699,13 @@ pub fn flow_row(cards: &[&gtk::Widget], min_width: i32, max_cols: usize, stretch
 
 /// The width a chart card needs before cards stack (half of a narrow window's content).
 pub const PAIR: i32 = 330;
+
+/// Compact current usage beside a dominant history chart; stacks when narrow.
+pub fn primary(summary: &gtk::Box, history: &gtk::Box) -> gtk::Box {
+    let row = flow_row(&[summary.upcast_ref(), history.upcast_ref()], PAIR, 2, false);
+    use gtk::subclass::prelude::ObjectSubclassIsExt;
+    let layout = row.layout_manager().and_downcast::<CardLayout>().expect("card layout");
+    layout.imp().weighted.set(true);
+    summary.add_css_class("usage-summary");
+    row
+}

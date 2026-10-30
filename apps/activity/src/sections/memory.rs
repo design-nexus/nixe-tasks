@@ -21,7 +21,7 @@ pub fn build(page: &Page) {
         150,
     );
     let (hist, hist_sum) = charts::card("History", &gr.root);
-    g.add(&charts::row(&[ring_card.upcast_ref(), hist.upcast_ref()], PAIR));
+    g.add(&charts::primary(&ring_card, &hist));
 
     // ----- Where it goes -----
     let parts = ["Apps", "Shared and tmpfs", "Kernel", "Cache"];
@@ -63,8 +63,8 @@ pub fn build(page: &Page) {
     let procs = charts::bar_list(10, "Reading processes…", true);
     let (procs_card, procs_sum) = charts::card("Processes using the most", &procs.root);
     procs_card.set_tooltip_text(Some("Resident memory of single processes; memory they share is counted in each"));
-    g.add(&charts::row(&[apps_card.upcast_ref(), procs_card.upcast_ref()], PAIR));
-    live::on_tick(&apps_card, move |s| {
+    let consumers = widgets::consumers("memory", ("Apps", &apps_card), ("Processes", &procs_card));
+    live::on_tick(&g.list, move |s| {
         let total = Some(s.mem.total as f64).filter(|t| *t > 0.0);
         let top_apps = top::groups(s, By::Mem, 10, None);
         apps.set(&top_apps);
@@ -79,22 +79,15 @@ pub fn build(page: &Page) {
     });
 
     // ----- Swap, compression, commit, pressure -----
-    let swap = charts::tile("Swap", Some(charts::spark("swap", Scale::Percent, fmt::pct)));
-    let zram = charts::tile("Compression", None);
-    let commit = charts::tile("Promised to apps", None);
-    let psi = charts::tile("Waiting for memory", Some(charts::spark("mem.psi", Scale::Auto { floor: 10.0 }, fmt::pct)));
-    let zram_ring = charts::ring(64);
-    zram_ring.root.set_halign(gtk::Align::Start);
-    zram_ring.root.set_margin_top(6);
-    zram.root.append(&zram_ring.root);
-    let commit_ring = charts::ring(64);
-    commit_ring.root.set_halign(gtk::Align::Start);
-    commit_ring.root.set_margin_top(6);
-    commit.root.append(&commit_ring.root);
+    let swap = charts::tile("Swap");
+    let zram = charts::tile("Compression");
+    let commit = charts::tile("Promised to apps");
+    let psi = charts::tile("Waiting for memory");
     commit.root.set_tooltip_text(Some(
         "Memory apps have reserved, against what the system can back with RAM and swap. Past 100% a burst of use can run out.",
     ));
     g.add(&charts::row(&[swap.root.upcast_ref(), zram.root.upcast_ref(), commit.root.upcast_ref(), psi.root.upcast_ref()], 150));
+    g.add(&consumers);
     live::on_tick(&swap.root, move |s| {
         let m = &s.mem;
         if m.swap_total > 0 {
@@ -107,21 +100,22 @@ pub fn build(page: &Page) {
         if m.zram_used > 0 {
             let ratio = m.zram_data as f64 / m.zram_used as f64;
             zram.value.set_text(&format!("{ratio:.1}×"));
-            zram.sub.set_text(&format!("{} held in {}", fmt::bytes(m.zram_data as f64), fmt::bytes(m.zram_used as f64)));
-            // How much RAM compression saves.
-            let saved = 1.0 - 1.0 / ratio.max(1.0);
-            zram_ring.set(saved, &fmt::pct(saved * 100.0), "saved", false);
-            zram_ring.root.set_visible(true);
+            let saved = (1.0 - 1.0 / ratio.max(1.0)) * 100.0;
+            zram.sub.set_text(&format!(
+                "{} held in {} · {} saved",
+                fmt::bytes(m.zram_data as f64),
+                fmt::bytes(m.zram_used as f64),
+                fmt::pct(saved)
+            ));
         } else {
             zram.value.set_text("–");
             zram.sub.set_text("no zram in use");
-            zram_ring.root.set_visible(false);
         }
         if m.commit_limit > 0 {
             let f = m.committed as f64 / m.commit_limit as f64;
             commit.value.set_text(&fmt::bytes(m.committed as f64));
-            commit.sub.set_text(&format!("of {} the system can back", fmt::bytes(m.commit_limit as f64)));
-            commit_ring.set(f.min(1.0), &fmt::pct(f * 100.0), "", f > 1.0);
+            commit.sub.set_text(&format!("{} of {}", fmt::pct(f * 100.0), fmt::bytes(m.commit_limit as f64)));
+            widgets::set_warn(&commit.value, f > 1.0);
         }
         match m.pressure {
             Some(p) => {
@@ -135,6 +129,8 @@ pub fn build(page: &Page) {
             }
         }
     });
+
+    let g = page.diagnostics("memory.pressure", "Pressure and swapping");
 
     // ----- Pressure and swapping over time -----
     let gr = graph::graph(
@@ -163,6 +159,8 @@ pub fn build(page: &Page) {
         });
         widgets::set_warn(&sw_sum, m.oom_kills > 0);
     });
+
+    let g = page.diagnostics("memory.details", "Memory accounting");
 
     // ----- Swap by app, and the details -----
     let swapped = charts::bar_list(8, "Nothing is swapped out.", true);
